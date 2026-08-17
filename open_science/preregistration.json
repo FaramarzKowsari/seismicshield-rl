@@ -1,0 +1,10 @@
+{
+  "status": "draft",
+  "template": "OSF Simulation Studies",
+  "title": "SeismicShield-RL: Preregistered Multi-Fidelity Benchmark of Multi-Agent Reinforcement Learning for Friction-Damper Co-Design Under Earthquake Uncertainty",
+  "doi": null,
+  "osf_url": null,
+  "protocol_version": "0.2-draft",
+  "confirmatory_runs_allowed": false,
+  "prior_pilot_disclosed": true
+}

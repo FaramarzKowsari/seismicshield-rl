@@ -1,0 +1,9 @@
+{
+  "experiment_id": "smoke-v0.1",
+  "config": "configs/experiments/smoke.yaml",
+  "status": "software-validation-only",
+  "artifacts": {
+    "benchmark.csv": "182d5d2415ed5b945d0854e79bfb1449c67d42701a2b28084ee5b3717b97e377",
+    "benchmark.json": "46c2839349b2f29627fd067ecd3861411e1388ab56565ee378254dfc476722b4"
+  }
+}

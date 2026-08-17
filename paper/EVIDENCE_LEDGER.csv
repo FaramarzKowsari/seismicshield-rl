@@ -1,0 +1,5 @@
+claim_id,claim_text,status,experiment_id,artifact_path,sha256,notes
+C001,The v0.1 software benchmark is deterministic on the synthetic fixture,exploratory,,,,Must not be reported as seismic efficacy evidence
+C100,MARL improves held-out Pareto hypervolume over required equal-budget baselines,blocked,,,,Requires v0.8 confirmatory run
+C101,The selected MARL policy generalizes across unseen earthquake records,blocked,,,,Requires frozen OOD test manifest
+C102,The selected MARL policy remains competitive under structural-parameter uncertainty,blocked,,,,Requires domain-randomization confirmatory study

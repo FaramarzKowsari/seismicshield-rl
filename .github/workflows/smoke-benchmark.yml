@@ -1,0 +1,23 @@
+name: Smoke benchmark
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "src/**"
+      - "configs/**"
+      - "data/fixtures/**"
+      - "scripts/run_smoke_benchmark.py"
+      - ".github/workflows/smoke-benchmark.yml"
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -e .
+      - run: python scripts/run_smoke_benchmark.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seismicshield-smoke-${{ github.sha }}
+          path: results/smoke_v0.1/

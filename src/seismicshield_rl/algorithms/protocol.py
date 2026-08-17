@@ -1,0 +1,9 @@
+from __future__ import annotations
+from typing import Protocol, Any
+
+class DesignPolicy(Protocol):
+    """Minimal algorithm boundary used by benchmark adapters."""
+    name: str
+    def fit(self, train_context: Any) -> None: ...
+    def propose(self, observation: Any, *, deterministic: bool = True) -> Any: ...
+    def metadata(self) -> dict[str, Any]: ...

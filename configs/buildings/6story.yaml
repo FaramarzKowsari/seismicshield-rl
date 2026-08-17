@@ -1,0 +1,6 @@
+id: synthetic-6story-v1
+story_height_m: 3.2
+masses_kg: [200000.0, 200000.0, 200000.0, 190000.0, 190000.0, 180000.0]
+stiffness_n_per_m: [180000000.0, 170000000.0, 155000000.0, 140000000.0, 125000000.0, 110000000.0]
+damping_ratio: 0.05
+notes: "Synthetic research fixture; not calibrated to a real building."

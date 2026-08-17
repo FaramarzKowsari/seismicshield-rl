@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "seismicshield-rl"
+version = "0.1.1"
+description = "Paper-grade benchmark for multi-agent RL seismic damper co-design"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Faramarz Kowsari"}]
+dependencies = [
+  "numpy>=1.26",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+api = ["fastapi>=0.110", "uvicorn>=0.29", "pydantic>=2.6"]
+marl = ["torch>=2.3", "torchrl>=0.6", "gymnasium>=1.0", "pettingzoo>=1.24"]
+optim = ["pymoo>=0.6"]
+opensees = ["openseespy>=3.8.0.0; python_version >= '3.12'"]
+all = ["seismicshield-rl[dev,api,marl,optim,opensees]"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100

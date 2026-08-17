@@ -1,0 +1,8 @@
+id: smoke-v0.1
+building: configs/buildings/3story.yaml
+ground_motion: data/fixtures/synthetic_pulse.csv
+max_dampers_per_story: 4
+slip_force_levels_n: [0.0, 50000.0, 100000.0, 200000.0, 350000.0]
+random_search_budget: 24
+seed: 7070
+status: software-validation-only
