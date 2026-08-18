@@ -3,9 +3,12 @@ algorithm_seeds: [1103, 2207, 3313, 4421, 5521, 6637, 7753, 8861]
 structural_latin_hypercube_seed: 24681357
 bootstrap_resampling:
   repetitions: 20000
+  random_seed: 998035145
+  derivation: 'unsigned 32-bit integer from the first 8 hexadecimal characters of SHA256("SeismicShield-RL-v0.8.0-bootstrap")'
+paired_sign_flip:
+  configurations: 4096
   random_seed: null
-  note: No additional seed is invented; it must be frozen by registration amendment before use.
+  note: No random seed is needed because all 4096 configurations are enumerated exactly.
 manifest_deterministic_selection:
   algorithm: SHA-256
   salt: SeismicShield-RL-v0.8.0-OSF-2026
-

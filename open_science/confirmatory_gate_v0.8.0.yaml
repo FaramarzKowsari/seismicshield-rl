@@ -9,6 +9,6 @@ structural_world_manifest_validated: false
 seed_ledger: open_science/seed_ledger_v0.8.0.yaml
 frozen_numerical_config: open_science/confirmatory_freeze_v0.8.0.yaml
 config_sha256: null
-source_commit_sha: null
+source_git_tag: confirmatory-v0.8.0
 tier_2_backend_validated: false
 confirmatory_runs_allowed: false

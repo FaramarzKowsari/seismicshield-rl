@@ -18,6 +18,11 @@
 > PREREGISTRATION/FREEZE INFRASTRUCTURE ONLY.** The v0.8.0 numerical contract and
 > empty real-data manifest schema do not authorize confirmatory execution.
 
+The bootstrap seed is frozen in the v0.8.0 seed ledger. Final source identity will be
+anchored by Git tag `confirmatory-v0.8.0`, resolving to exactly the commit at `HEAD`;
+that tag is intentionally absent until the final freeze. No confirmatory scientific
+result has been generated.
+
 
 ## Open-science commitment
 
