@@ -44,7 +44,7 @@ def run_benchmark(config_path: str | Path, output_dir: str | Path) -> list[dict]
         })
     out=Path(output_dir); out.mkdir(parents=True,exist_ok=True)
     with (out/'benchmark.csv').open('w',newline='',encoding='utf-8') as f:
-        writer=csv.DictWriter(f,fieldnames=list(rows[0].keys())); writer.writeheader(); writer.writerows(rows)
+        writer=csv.DictWriter(f,fieldnames=list(rows[0].keys()),lineterminator='\n'); writer.writeheader(); writer.writerows(rows)
     (out/'benchmark.json').write_text(json.dumps(rows,indent=2),encoding='utf-8')
     manifest={'experiment_id':cfg['id'],'config':str(config_path.relative_to(repo_root)),'status':cfg['status'],'artifacts':{}}
     for name in ['benchmark.csv','benchmark.json']:
