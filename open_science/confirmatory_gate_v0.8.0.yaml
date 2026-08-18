@@ -1,0 +1,14 @@
+version: v0.8.0
+osf_registration_status: pending
+osf_registration_persistent_id: null
+ground_motion_manifest: data/manifests/ground_motion_manifest.csv
+ground_motion_manifest_sha256: null
+structural_world_manifest: null
+structural_world_manifest_sha256: null
+structural_world_manifest_validated: false
+seed_ledger: open_science/seed_ledger_v0.8.0.yaml
+frozen_numerical_config: open_science/confirmatory_freeze_v0.8.0.yaml
+config_sha256: null
+source_commit_sha: null
+tier_2_backend_validated: false
+confirmatory_runs_allowed: false

@@ -1,0 +1,11 @@
+version: v0.8.0
+algorithm_seeds: [1103, 2207, 3313, 4421, 5521, 6637, 7753, 8861]
+structural_latin_hypercube_seed: 24681357
+bootstrap_resampling:
+  repetitions: 20000
+  random_seed: null
+  note: No additional seed is invented; it must be frozen by registration amendment before use.
+manifest_deterministic_selection:
+  algorithm: SHA-256
+  salt: SeismicShield-RL-v0.8.0-OSF-2026
+
