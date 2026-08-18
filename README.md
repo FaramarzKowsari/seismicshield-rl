@@ -13,6 +13,16 @@
 
 > **Scientific status — v0.1.0:** the repository contains a deterministic research surrogate, benchmark harness, reproducibility contract, interfaces for OpenSeesPy and multi-agent RL, a REST API, tests, Docker and CI. It does **not** yet make paper-level claims about seismic protection performance. Smoke-benchmark outputs are software-validation artifacts only.
 
+> **Confirmatory status:** **CONFIRMATORY RESULTS ARE NOT YET AVAILABLE. THE
+> CONFIRMATORY GATE REMAINS BLOCKED. THE CURRENT WORK IS
+> PREREGISTRATION/FREEZE INFRASTRUCTURE ONLY.** The v0.8.0 numerical contract and
+> empty real-data manifest schema do not authorize confirmatory execution.
+
+The bootstrap seed is frozen in the v0.8.0 seed ledger. Final source identity will be
+anchored by Git tag `confirmatory-v0.8.0`, resolving to exactly the commit at `HEAD`;
+that tag is intentionally absent until the final freeze. No confirmatory scientific
+result has been generated.
+
 
 ## Open-science commitment
 

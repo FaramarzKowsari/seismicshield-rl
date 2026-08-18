@@ -1,0 +1,52 @@
+freeze:
+  name: SeismicShield-RL Confirmatory Numerical Freeze
+  version: v0.8.0
+  status: preregistration_infrastructure_only
+ground_motions:
+  physical_events: 40
+  records_per_event: 4
+  total_records: 160
+  partitions:
+    training: {events: 18, records: 72}
+    validation: {events: 6, records: 24}
+    pilot: {events: 4, records: 16, excluded_from_confirmatory_inference: true}
+    confirmatory: {events: 12, records: 48}
+  eligibility:
+    physical_event_identity_known: true
+    component: horizontal_acceleration
+    units_deterministically_convertible_to_si: true
+    maximum_sampling_interval_s: 0.020
+    minimum_usable_duration_s: 10.0
+    minimum_absolute_pga_g: 0.15
+    provenance_required: true
+  selection:
+    algorithm: SHA-256
+    salt: SeismicShield-RL-v0.8.0-OSF-2026
+    event_key: "SHA-256(salt + ':event:' + source + ':' + event_id)"
+    record_key: "SHA-256(salt + ':record:' + source + ':' + event_id + ':' + record_id)"
+structures:
+  building_heights_stories: [3, 6, 10, 20]
+  primary_realizations_per_height:
+    nominal: 1
+    latin_hypercube_uncertainty: 3
+  lhs_seed: 24681357
+algorithms:
+  primary_seeds: [1103, 2207, 3313, 4421, 5521, 6637, 7753, 8861]
+budgets:
+  tier_1_completed_design_evaluations_per_stochastic_method_per_seed: 51200
+  core_confirmatory_physical_worlds: 768
+  maximum_tier_2_openseespy_evaluations: 463616
+analysis:
+  primary_normalized_objective_vector: [C, MIDR/0.02, PFA/1.0g]
+  pareto_hypervolume_reference_point: [1.05, 5.00, 5.00]
+  normalized_cost_ceilings: [0.25, 0.50, 0.75, 1.00]
+  cvar_alpha: 0.90
+  bootstrap_repetitions: 20000
+  primary_paired_sign_flip_configurations: 4096
+  primary_alpha: 0.05
+  multiplicity:
+    procedure: Holm
+    family: [MAPPO_vs_PPO, MAPPO_vs_NSGA-II, MAPPO_vs_IPPO]
+  fixed_failure_vector: [1.05, 5.00, 5.00]
+  separate_tunable_failure_penalty_permitted: false
+

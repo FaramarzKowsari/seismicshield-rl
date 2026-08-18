@@ -1,0 +1,1 @@
+source,event_id,record_id,station_id,component,sampling_interval_s,usable_duration_s,original_units,normalized_units,pga_g,event_date,latitude,longitude,partition,source_url_or_access_reference,preprocessing_status,raw_sha256,processed_sha256,eligibility_status,eligibility_reason
