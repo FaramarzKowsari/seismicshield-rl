@@ -5,6 +5,7 @@ from scripts.probe_tadas_search_network import (
     sanitize_post_data,
     sanitize_url,
     select_headers,
+    should_capture_request,
 )
 
 
@@ -47,6 +48,21 @@ def test_header_allowlist_never_emits_cookie_or_authorization():
         {"content-type", "accept", "cookie", "authorization"},
     )
     assert result == {"content-type": "application/json", "accept": "application/json"}
+
+
+def test_capture_policy_includes_navigation_xhr_fetch_and_other():
+    origin = "https://tadas.afad.gov.tr"
+    assert should_capture_request(origin + "/list-waveform", "document")
+    assert should_capture_request(origin + "/api/search", "xhr")
+    assert should_capture_request(origin + "/api/search", "fetch")
+    assert should_capture_request(origin + "/backend/action", "other")
+
+
+def test_capture_policy_excludes_static_and_cross_origin():
+    origin = "https://tadas.afad.gov.tr"
+    assert not should_capture_request(origin + "/site.css", "stylesheet")
+    assert not should_capture_request(origin + "/logo.png", "image")
+    assert not should_capture_request("https://example.com/api/search", "xhr")
 
 
 def test_direct_entrypoint_help_runs_from_repo_root():
