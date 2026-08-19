@@ -26,8 +26,9 @@ FIELD_ALIASES = {
     "event_id": ("eventid", "event_id"),
     "event_date_from_export": ("eventdate", "event_date", "date"),
     "epicenter_agency": ("epicenteragency", "epicenter_agency", "agency"),
-    "longitude": ("longitude", "lon"), "latitude": ("latitude", "lat"),
-    "magnitude_type": ("magnitudetype", "magnitude_type"),
+    "longitude": ("epicenterlon", "longitude", "lon"),
+    "latitude": ("epicenterlat", "latitude", "lat"),
+    "magnitude_type": ("type", "magnitudetype", "magnitude_type"),
     "magnitude": ("magnitude", "mag"), "depth": ("depth",),
     "location": ("location",),
 }
@@ -54,7 +55,7 @@ def build_event_queue(source_csv: Path) -> tuple[list[dict[str, object]], dict[s
         input_rows = list(reader)
 
     candidates: list[dict[str, object]] = []
-    seen: set[tuple[str, ...]] = set()
+    seen_event_ids: set[str] = set()
     blank_count = 0
     for input_row in input_rows:
         event_id = _get(input_row, "event_id")
@@ -62,9 +63,9 @@ def build_event_queue(source_csv: Path) -> tuple[list[dict[str, object]], dict[s
             blank_count += 1
             continue
         values = tuple(_get(input_row, field) for field in FIELD_ALIASES)
-        if values in seen:
-            raise ValueError(f"duplicate input row for EventID {event_id!r}")
-        seen.add(values)
+        if event_id in seen_event_ids:
+            raise ValueError(f"duplicate EventID {event_id!r}")
+        seen_event_ids.add(event_id)
         row: dict[str, object] = {
             "source": AFAD_TADAS_SOURCE,
             **{field: value for field, value in zip(FIELD_ALIASES, values)},

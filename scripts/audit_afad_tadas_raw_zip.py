@@ -153,18 +153,43 @@ def audit_component(raw: bytes, filename: str, event_id: str, waveform_detail_id
 
 def audit_zip(zip_path: Path, event_id: str, waveform_detail_id: str,
               source_reference: str = "") -> dict[str, object]:
-    if not event_id.strip() or not waveform_detail_id.strip():
-        raise ValueError("canonical event_id and waveform_detail_id must be nonblank external inputs")
+    if not event_id.strip():
+        raise ValueError("canonical event_id must be a nonblank external input")
+    detail = waveform_detail_id.strip()
+    if not detail:
+        raise ValueError("waveform_detail_id must be a nonblank decimal digit string")
+    if not detail.isdecimal():
+        raise ValueError("waveform_detail_id must be a decimal digit string")
     zip_hash = hashlib.sha256(zip_path.read_bytes()).hexdigest()
     components = []
     with zipfile.ZipFile(zip_path) as archive:
         for info in sorted(archive.infolist(), key=lambda item: item.filename):
             if info.is_dir():
                 continue
-            stream = Path(info.filename).suffix.lstrip(".").upper()
+            raw = archive.read(info)
+            filename_looks_like_component = bool(
+                re.search(r"(?:^|[_.-])HN[ENZ](?:[_.-]|$)", info.filename, re.IGNORECASE)
+            )
+            raw_declares_component = bool(
+                re.search(rb"(?im)^\s*(?:STREAM|COMPONENT)\s*:", raw)
+            )
+            try:
+                headers, _ = parse_dyna_ascii(raw)
+            except (UnicodeDecodeError, ValueError) as exc:
+                if filename_looks_like_component or raw_declares_component:
+                    raise ValueError(f"malformed waveform component {info.filename!r}: {exc}") from exc
+                continue
+            stream = _header(headers, "STREAM", "COMPONENT").strip().upper()
+            if not stream:
+                # Legacy extension-only naming remains supported, but metadata wins whenever present.
+                stream = Path(info.filename).suffix.lstrip(".").upper()
             if stream in {"HNE", "HNN", "HNZ"}:
-                components.append(audit_component(archive.read(info), info.filename, event_id,
-                                                  waveform_detail_id, zip_hash, source_reference))
+                components.append(audit_component(raw, info.filename, event_id, detail,
+                                                  zip_hash, source_reference))
+            elif raw_declares_component or filename_looks_like_component:
+                raise ValueError(
+                    f"waveform component {info.filename!r} has unsupported stream {stream!r}"
+                )
     if not components:
         raise ValueError("ZIP contains no HNE, HNN, or HNZ DYNA components")
     return {"audit_type": "AFAD_TADAS_LOCAL_RAW_COMPONENT_STAGING_AUDIT",

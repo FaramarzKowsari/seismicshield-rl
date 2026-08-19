@@ -2,6 +2,8 @@ import hashlib
 import json
 import zipfile
 
+import pytest
+
 from scripts.audit_afad_tadas_raw_zip import audit_zip, parse_dyna_ascii, write_audit
 
 
@@ -35,12 +37,14 @@ def test_parser_splits_header_on_first_colon():
     assert len(samples) == 501
 
 
-def test_zip_audit_orientation_identity_hashes_license_and_staging(tmp_path):
+def test_zip_audit_generic_filenames_orientation_identity_hashes_and_staging(tmp_path):
     path = tmp_path / "raw.zip"
     entries = {name: component(stream) for name, stream in
-               (("a.HNE", "HNE"), ("b.HNN", "HNN"), ("c.HNZ", "HNZ"))}
+               (("station_HNE.txt", "HNE"), ("station_HNN.txt", "HNN"),
+                ("station_HNZ.txt", "HNZ"))}
+    entries["README.txt"] = b"This archive contains synthetic test components.\n"
     make_zip(path, entries)
-    audit = audit_zip(path, "000123", "WD456", "local TADAS download")
+    audit = audit_zip(path, "000123", "456", "local TADAS download")
     assert audit["final_manifest"] is False
     assert audit["zip_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
     by_stream = {row["stream"]: row for row in audit["components"]}
@@ -50,14 +54,14 @@ def test_zip_audit_orientation_identity_hashes_license_and_staging(tmp_path):
     assert by_stream["HNZ"]["eligibility_reasons"] == ["horizontal_orientation"]
     row = by_stream["HNE"]
     assert row["event_id"] == "000123" and row["raw_header_event_id"] == "0"
-    assert row["record_id"] == "WD456:HNE"
+    assert row["record_id"] == "456:HNE"
     assert row["parsed_sample_count"] == row["ndata"] == 501
     assert row["usable_duration_s"] == 10.0
     assert row["raw_duration_derivation"] == "(NDATA - 1) * SAMPLING_INTERVAL_S"
     assert row["event_time_utc"] == "2020-01-02T03:04:05Z"
     assert row["data_license"] == "U (unknown license)"
     assert row["raw_redistribution_allowed"] is False
-    assert row["raw_sha256"] == hashlib.sha256(entries["a.HNE"]).hexdigest()
+    assert row["raw_sha256"] == hashlib.sha256(entries["station_HNE.txt"]).hexdigest()
     out = tmp_path / "staging" / "audit.json"
     write_audit(audit, out)
     assert json.loads(out.read_text())["final_manifest"] is False
@@ -77,3 +81,26 @@ def test_failures_are_reported_without_repair(tmp_path):
     assert "usable_duration" in rows["count.HNE"]["eligibility_reasons"]
     assert "valid_sampling_interval" in rows["dt.HNN"]["eligibility_reasons"]
     assert "pga_header_data_agreement" in rows["pga.HNE"]["eligibility_reasons"]
+
+
+@pytest.mark.parametrize("detail", ["", "WD456", "45.6", "   "])
+def test_waveform_detail_id_must_be_decimal_digits(tmp_path, detail):
+    path = tmp_path / "raw.zip"
+    make_zip(path, {"station.txt": component()})
+    with pytest.raises(ValueError, match="waveform_detail_id"):
+        audit_zip(path, "123", detail, "local source")
+
+
+def test_waveform_detail_id_leading_zeros_are_preserved(tmp_path):
+    path = tmp_path / "raw.zip"
+    make_zip(path, {"station.txt": component()})
+    row = audit_zip(path, "123", "00456", "local source")["components"][0]
+    assert row["waveform_detail_id"] == "00456"
+    assert row["record_id"] == "00456:HNE"
+
+
+def test_malformed_waveform_like_file_fails_closed(tmp_path):
+    path = tmp_path / "raw.zip"
+    make_zip(path, {"station_HNE.txt": b"STREAM: HNE\nnot numeric data\n"})
+    with pytest.raises(ValueError, match="malformed waveform component"):
+        audit_zip(path, "123", "456", "local source")

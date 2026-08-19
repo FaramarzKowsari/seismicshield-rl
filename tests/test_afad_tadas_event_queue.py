@@ -43,8 +43,41 @@ def test_duplicate_input_row_is_rejected(tmp_path):
     source = tmp_path / "events.csv"
     row = ("123", "2020-01-01", "AFAD", "30", "40", "Mw", "6", "7", "A")
     write_csv(source, [row, row], bom=False, newline="\n")
-    with pytest.raises(ValueError, match="duplicate input row"):
+    with pytest.raises(ValueError, match="duplicate EventID '123'"):
         build_event_queue(source)
+
+
+def test_duplicate_event_id_with_conflicting_metadata_is_rejected(tmp_path):
+    source = tmp_path / "events.csv"
+    write_csv(source, [
+        ("123", "2020-01-01", "AFAD", "30", "40", "Mw", "6", "7", "A"),
+        ("123", "2021-02-02", "OTHER", "31", "41", "Ml", "5", "8", "B"),
+    ])
+    with pytest.raises(ValueError, match="duplicate EventID '123'"):
+        build_event_queue(source)
+
+
+def test_different_event_ids_with_identical_metadata_are_allowed(tmp_path):
+    source = tmp_path / "events.csv"
+    tail = ("2020-01-01", "AFAD", "30", "40", "Mw", "6", "7", "A")
+    write_csv(source, [("123", *tail), ("124", *tail)])
+    rows, _ = build_event_queue(source)
+    assert {row["event_id"] for row in rows} == {"123", "124"}
+
+
+def test_exact_real_tadas_event_search_headers(tmp_path):
+    source = tmp_path / "real_headers.csv"
+    source.write_text(
+        "EventID,EventDate,EpicenterAgency,EpicenterLon,EpicenterLat,Type,"
+        "Magnitude,Depth,Location\n"
+        "123,2020-01-01,AFAD,30.25,40.75,Mw,6.1,8,Test location\n",
+        encoding="utf-8",
+    )
+    rows, _ = build_event_queue(source)
+    assert rows[0]["longitude"] == "30.25"
+    assert rows[0]["latitude"] == "40.75"
+    assert rows[0]["magnitude_type"] == "Mw"
+    assert all(rows[0][field] for field in ("longitude", "latitude", "magnitude_type"))
 
 
 def test_hash_contract_changes_with_source_and_id():
