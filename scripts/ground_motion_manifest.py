@@ -45,6 +45,8 @@ def afad_record_id(waveform_detail_id: str, stream: str) -> str:
     stream = str(stream).strip().upper()
     if not detail:
         raise ValueError("blank waveform_detail_id")
+    if not re.fullmatch(r"[0-9]+", detail):
+        raise ValueError("waveform_detail_id must be a decimal digit string")
     if stream not in {"HNE", "HNN"}:
         raise ValueError(f"AFAD/TADAS stream {stream!r} is not an eligible horizontal stream")
     return f"{detail}:{stream}"
