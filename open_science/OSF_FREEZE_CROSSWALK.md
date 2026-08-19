@@ -10,6 +10,7 @@ the Git tag `confirmatory-v0.8.0`, which must resolve to one exact commit SHA an
 | OSF preregistration concept | Repository file / configuration key | Validation script / test |
 |---|---|---|
 | Ground-motion split | `confirmatory_freeze_v0.8.0.yaml:ground_motions` | `validate_ground_motion_manifest.py`; `test_event_level_split_and_partition_counts` |
+| AFAD/TADAS identity, duration, PGA, license, and UTC provenance | `ground_motions.afad_tadas_contract`; `data/manifests/README.md` | `ground_motion_manifest.py`; AFAD/TADAS contract tests in `test_ground_motion_manifest.py` |
 | Seeds | `seed_ledger_v0.8.0.yaml` (including frozen bootstrap seed `998035145`) | `validate_seed_ledger` in the confirmatory gate; seed-ledger rejection tests |
 | Tier-1 budget | `budgets.tier_1_completed_design_evaluations_per_stochastic_method_per_seed` | frozen-config digest in confirmatory gate |
 | Tier-2 cap | `budgets.maximum_tier_2_openseespy_evaluations` | frozen-config digest in confirmatory gate |
