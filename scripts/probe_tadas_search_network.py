@@ -84,13 +84,11 @@ def sanitize_post_data(post_data: str | None, content_type: str | None = None):
 
 
 def sanitize_ws_payload(payload):
-    """Keep only redacted structured text or binary length from WebSocket frames."""
+    """Keep only redacted structured text or opaque/binary length from WebSocket frames."""
     if isinstance(payload, bytes):
         return {"binary_length": len(payload)}
     text = str(payload)
     structured = sanitize_post_data(text)
-    if structured in {"<body omitted>", "<non-json body omitted>", "<form body omitted>"}:
-        return {"text_length": len(text), "content": structured}
     return {"text_length": len(text), "content": structured}
 
 
