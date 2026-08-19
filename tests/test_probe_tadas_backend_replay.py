@@ -1,7 +1,12 @@
 import subprocess
 import sys
 
-from scripts.probe_tadas_backend_replay import build_backend_payload, response_shape
+from scripts.probe_tadas_backend_replay import (
+    build_backend_payload,
+    forwardable_headers,
+    response_shape,
+    sensitive_header_presence,
+)
 
 
 def _row():
@@ -65,6 +70,40 @@ def test_response_shape_reports_list_and_dict_without_rewriting_body():
         "top_level_type": "dict",
         "keys": ["a", "z"],
     }
+
+
+def test_live_request_headers_are_forwarded_in_memory_but_transport_headers_removed():
+    source = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": "Bearer secret",
+        "Cookie": "session=secret",
+        "X-XSRF-Token": "csrf-secret",
+        "Content-Length": "123",
+        "Host": "ivmeservis.afad.gov.tr",
+        "Connection": "keep-alive",
+    }
+    forwarded = forwardable_headers(source)
+    assert forwarded["Authorization"] == "Bearer secret"
+    assert forwarded["Cookie"] == "session=secret"
+    assert forwarded["X-XSRF-Token"] == "csrf-secret"
+    assert "Content-Length" not in forwarded
+    assert "Host" not in forwarded
+    assert "Connection" not in forwarded
+
+
+def test_sensitive_header_presence_records_only_boolean_presence():
+    source = {
+        "Authorization": "Bearer secret",
+        "Cookie": "session=secret",
+        "Content-Type": "application/json",
+    }
+    presence = sensitive_header_presence(source)
+    assert presence["authorization"] is True
+    assert presence["cookie"] is True
+    assert presence["x-csrf-token"] is False
+    assert presence["x-xsrf-token"] is False
+    assert "secret" not in repr(presence)
 
 
 def test_direct_entrypoint_help_runs_from_repo_root():
