@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
-"""Replay one AFAD/TADAS waveform search directly against the discovered backend.
+"""Replay one AFAD/TADAS waveform search using an exact live browser request.
 
 Diagnostic/provenance infrastructure only. This does not change the frozen event order,
 0.15 g necessary-condition threshold, component-level eligibility rules, or confirmatory
-gate. The probe reuses the persistent authenticated Chromium context, sends one direct
-POST to the backend endpoint observed in the privacy-safe network trace, and writes the
-response only under data/private by default.
+gate.
 
-Cookie/Authorization values are never serialized by this script. The API request context
-may share the browser session internally, but authentication material is not written to
-output.
+The previous direct API probe reproduced the visible JSON payload but received HTTP 500.
+The privacy-safe network trace intentionally omitted Cookie/Authorization values, so it
+could not establish whether the live Angular request carried session/authentication
+headers that the direct API request lacked. This probe therefore performs exactly one
+known UI search, captures that request's body and headers in memory, and immediately
+replays the exact request through the BrowserContext APIRequestContext.
+
+Sensitive header *values* are never printed or serialized. The private artifact records
+only their presence plus non-secret request metadata and the replay response.
 """
 
 from __future__ import annotations
 
 import argparse
-from datetime import timedelta, timezone
+from datetime import timedelta
 import hashlib
 import json
 from pathlib import Path
@@ -30,6 +34,21 @@ else:
 BACKEND_URL = "https://ivmeservis.afad.gov.tr/Waveforms/GetWaveforms"
 DEFAULT_OUT = Path("data/private/tadas-backend-replay.json")
 
+SENSITIVE_HEADER_NAMES = {
+    "authorization",
+    "cookie",
+    "proxy-authorization",
+    "x-csrf-token",
+    "x-xsrf-token",
+}
+HOP_BY_HOP_OR_RECOMPUTED_HEADERS = {
+    "host",
+    "content-length",
+    "connection",
+    "accept-encoding",
+    "transfer-encoding",
+}
+
 
 def _iso_utc_day(day, *, end: bool) -> str:
     suffix = "23:59:59.000Z" if end else "00:00:00.000Z"
@@ -37,11 +56,11 @@ def _iso_utc_day(day, *, end: bool) -> str:
 
 
 def build_backend_payload(queue_row: dict[str, str], *, pad_days: int = 1) -> dict[str, object]:
-    """Build the minimal payload observed in the live TADAS Search request.
+    """Build the minimal payload inferred before exact live-request bootstrap.
 
-    The exact event id is authoritative for this replay. The date window is retained as a
-    fail-safe server-side constraint and spans whole UTC days around the exported event
-    date. It is not used to alter deterministic event selection.
+    This helper is retained for comparison/tests. The live replay path below deliberately
+    does not trust this inferred date serialization until it has been validated against
+    the exact request emitted by the current TADAS UI.
     """
     if pad_days < 0:
         raise ValueError("pad_days must be >= 0")
@@ -86,6 +105,34 @@ def response_shape(value) -> dict[str, object]:
     return {"top_level_type": type(value).__name__}
 
 
+def forwardable_headers(headers: dict[str, str]) -> dict[str, str]:
+    """Keep the exact live request headers in memory except transport-recomputed ones."""
+    return {
+        str(key): str(value)
+        for key, value in headers.items()
+        if str(key).lower() not in HOP_BY_HOP_OR_RECOMPUTED_HEADERS
+        and not str(key).startswith(":")
+    }
+
+
+def sensitive_header_presence(headers: dict[str, str]) -> dict[str, bool]:
+    lowered = {str(key).lower() for key in headers}
+    return {name: name in lowered for name in sorted(SENSITIVE_HEADER_NAMES)}
+
+
+def _decode_json_or_text(body: bytes, content_type: str):
+    try:
+        text = body.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return None, "<non-UTF-8 body omitted>"
+    if "json" in content_type.lower():
+        try:
+            return json.loads(text), None
+        except json.JSONDecodeError:
+            return None, text[:4000]
+    return None, text[:4000]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("queue", type=Path, help="deterministic event_candidate_queue.csv")
@@ -108,7 +155,8 @@ def main() -> int:
     if int(row["rank"]) != args.rank:
         parser.error("queue rank mismatch")
 
-    payload = build_backend_payload(row, pad_days=args.pad_days)
+    event_id = row["event_id"]
+    start, end = base.date_window(row["event_date_from_export"], pad_days=args.pad_days)
 
     with KendoTadasPlaywrightBrowser(
         args.profile_dir,
@@ -117,68 +165,125 @@ def main() -> int:
         timeout_ms=args.timeout_ms,
         selectors={},
     ) as browser:
+        assert browser.page is not None
         assert browser.context is not None
-        response = browser.context.request.post(
+        page = browser.page
+
+        # Re-enter the known search form after attaching the exact request/response waiters.
+        page.goto(base.TADAS_WAVEFORM_SEARCH_URL, wait_until="domcontentloaded")
+        browser._set_control("event_id", event_id)
+        browser._set_control("start_date", start)
+        browser._set_control("end_date", end)
+        browser._verify_search_form(event_id, start, end)
+
+        def matching_request(request) -> bool:
+            if request.url != BACKEND_URL or request.method.upper() != "POST":
+                return False
+            post_data = request.post_data or ""
+            return f'"eaEventId":"{event_id}"' in post_data.replace(" ", "")
+
+        def matching_response(response) -> bool:
+            return matching_request(response.request)
+
+        with page.expect_request(matching_request, timeout=args.timeout_ms) as request_info:
+            with page.expect_response(matching_response, timeout=args.timeout_ms) as response_info:
+                browser._action("search_button", ("search", "query", "sorgula", "ara")).click()
+
+        live_request = request_info.value
+        live_response = response_info.value
+        browser._verify_search_form(event_id, start, end)
+
+        live_post_data = live_request.post_data
+        if not live_post_data:
+            raise RuntimeError("captured live TADAS search request had no POST body")
+        try:
+            live_payload = json.loads(live_post_data)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("captured live TADAS search request body was not JSON") from exc
+        if str(live_payload.get("eaEventId", "")) != event_id:
+            raise RuntimeError("captured live TADAS request EventID did not match queue EventID")
+
+        live_headers = live_request.all_headers()
+        replay_headers = forwardable_headers(live_headers)
+        presence = sensitive_header_presence(live_headers)
+
+        # Replay the *exact* live body and the live request headers in memory. Sensitive
+        # values are used only for this request and never written to disk or stdout.
+        replay = browser.context.request.post(
             BACKEND_URL,
-            data=payload,
-            headers={
-                "Accept": "application/json, text/plain, */*",
-                "Content-Type": "application/json",
-                "Referer": "https://tadas.afad.gov.tr/",
-            },
+            data=live_post_data,
+            headers=replay_headers,
             timeout=args.timeout_ms,
         )
-        status = response.status
-        headers = response.headers
-        body = response.body()
+        replay_status = replay.status
+        replay_headers_response = replay.headers
+        replay_body = replay.body()
 
-    if status != 200:
-        raise RuntimeError(f"backend replay returned HTTP {status}")
-    content_type = headers.get("content-type", "")
-    if "json" not in content_type.lower():
-        raise RuntimeError(f"backend replay returned non-JSON content type {content_type!r}")
-    try:
-        response_json = json.loads(body.decode("utf-8-sig"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise RuntimeError("backend replay response was not valid UTF-8 JSON") from exc
+    replay_content_type = replay_headers_response.get("content-type", "")
+    replay_json, replay_text = _decode_json_or_text(replay_body, replay_content_type)
 
     artifact = {
-        "schema_version": 1,
+        "schema_version": 2,
         "privacy": {
             "cookies_recorded": False,
             "authorization_recorded": False,
+            "sensitive_header_values_recorded": False,
             "output_location_expected_private": True,
         },
         "probe": {
             "rank": args.rank,
-            "event_id": row["event_id"],
+            "event_id": event_id,
             "event_date_from_export": row["event_date_from_export"],
+            "ui_start_date": start,
+            "ui_end_date": end,
         },
-        "request": {
-            "method": "POST",
-            "url": BACKEND_URL,
-            "payload": payload,
+        "live_ui_request": {
+            "method": live_request.method,
+            "url": live_request.url,
+            "payload": live_payload,
+            "header_names": sorted(str(key).lower() for key in live_headers),
+            "sensitive_header_presence": presence,
+            "ui_response_status": live_response.status,
+            "ui_response_content_type": live_response.headers.get("content-type", ""),
         },
-        "response": {
-            "status": status,
-            "content_type": content_type,
-            "body_sha256": hashlib.sha256(body).hexdigest(),
-            "body_bytes": len(body),
-            "shape": response_shape(response_json),
-            "json": response_json,
+        "exact_replay": {
+            "status": replay_status,
+            "content_type": replay_content_type,
+            "body_sha256": hashlib.sha256(replay_body).hexdigest(),
+            "body_bytes": len(replay_body),
+            "shape": response_shape(replay_json) if replay_json is not None else None,
+            "json": replay_json,
+            "error_text": replay_text if replay_json is None else None,
         },
+        "inferred_payload_for_comparison": build_backend_payload(row, pad_days=args.pad_days),
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(artifact, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    shape = artifact["response"]["shape"]
-    print(f"Backend replay HTTP {status}: {BACKEND_URL}")
-    print(f"EventID {row['event_id']} rank {args.rank}")
-    print(f"Response SHA256: {artifact['response']['body_sha256']}")
-    print(f"Response bytes: {len(body)}")
-    print("Response shape: " + json.dumps(shape, ensure_ascii=False, sort_keys=True))
+    print(f"Live UI request HTTP {live_response.status}: {BACKEND_URL}")
+    print(f"EventID {event_id} rank {args.rank}")
+    print(
+        "Sensitive header presence: "
+        + ", ".join(f"{name}={'yes' if value else 'no'}" for name, value in presence.items())
+    )
+    print(f"Exact in-memory replay HTTP {replay_status}")
+    print(f"Replay SHA256: {artifact['exact_replay']['body_sha256']}")
+    print(f"Replay bytes: {len(replay_body)}")
+    if replay_json is not None:
+        print("Replay shape: " + json.dumps(response_shape(replay_json), ensure_ascii=False, sort_keys=True))
+    else:
+        print("Replay returned non-JSON/error text; saved privately for diagnosis")
     print(f"Wrote private replay artifact: {args.out}")
-    print("No Cookie or Authorization values are written to the artifact.")
+    print("No Cookie, Authorization, CSRF/XSRF, or other sensitive header values are written.")
+
+    if live_response.status != 200:
+        raise RuntimeError(f"live UI backend request unexpectedly returned HTTP {live_response.status}")
+    if replay_status != 200:
+        raise RuntimeError(
+            f"exact live-request replay returned HTTP {replay_status}; inspect private artifact"
+        )
+    if replay_json is None:
+        raise RuntimeError("exact live-request replay returned HTTP 200 but non-JSON content")
     return 0
 
 
