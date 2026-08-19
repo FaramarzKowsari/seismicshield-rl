@@ -4,6 +4,7 @@ import sys
 from scripts.probe_tadas_search_network import (
     sanitize_post_data,
     sanitize_url,
+    sanitize_ws_payload,
     select_headers,
     should_capture_request,
 )
@@ -37,6 +38,15 @@ def test_sanitize_form_body_redacts_authentication_fields():
     assert body == {"eventId": "551067", "password": "<redacted>", "x": "1"}
 
 
+def test_websocket_payload_redacts_structured_secrets_and_omits_plain_text():
+    structured = sanitize_ws_payload('{"eventId":"551067","token":"secret"}')
+    assert structured["content"]["eventId"] == "551067"
+    assert structured["content"]["token"] == "<redacted>"
+    plain = sanitize_ws_payload("opaque protocol frame")
+    assert plain == {"text_length": 21, "content": "<body omitted>"}
+    assert sanitize_ws_payload(b"abc") == {"binary_length": 3}
+
+
 def test_header_allowlist_never_emits_cookie_or_authorization():
     result = select_headers(
         {
@@ -50,19 +60,18 @@ def test_header_allowlist_never_emits_cookie_or_authorization():
     assert result == {"content-type": "application/json", "accept": "application/json"}
 
 
-def test_capture_policy_includes_navigation_xhr_fetch_and_other():
-    origin = "https://tadas.afad.gov.tr"
-    assert should_capture_request(origin + "/list-waveform", "document")
-    assert should_capture_request(origin + "/api/search", "xhr")
-    assert should_capture_request(origin + "/api/search", "fetch")
-    assert should_capture_request(origin + "/backend/action", "other")
+def test_capture_policy_includes_cross_origin_http_dynamic_traffic():
+    assert should_capture_request("https://tadas.afad.gov.tr/list-waveform", "document")
+    assert should_capture_request("https://api.example.net/search", "xhr")
+    assert should_capture_request("https://backend.example.net/search", "fetch")
+    assert should_capture_request("http://127.0.0.1/action", "other")
 
 
-def test_capture_policy_excludes_static_and_cross_origin():
-    origin = "https://tadas.afad.gov.tr"
-    assert not should_capture_request(origin + "/site.css", "stylesheet")
-    assert not should_capture_request(origin + "/logo.png", "image")
-    assert not should_capture_request("https://example.com/api/search", "xhr")
+def test_capture_policy_excludes_static_and_non_http_schemes():
+    assert not should_capture_request("https://tadas.afad.gov.tr/site.css", "stylesheet")
+    assert not should_capture_request("https://example.com/logo.png", "image")
+    assert not should_capture_request("data:text/plain,hello", "other")
+    assert not should_capture_request("blob:https://tadas.afad.gov.tr/id", "other")
 
 
 def test_direct_entrypoint_help_runs_from_repo_root():
