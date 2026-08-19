@@ -9,3 +9,5 @@ dist/
 .env
 .DS_Store
 results/local/
+data/raw/
+data/private/
