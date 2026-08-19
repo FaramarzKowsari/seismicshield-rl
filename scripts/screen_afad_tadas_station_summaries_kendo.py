@@ -3,10 +3,10 @@
 
 from __future__ import annotations
 
-try:
+if __package__:
     from scripts import screen_afad_tadas_station_summaries as base
     from scripts.tadas_kendo_adapter import KendoTadasPlaywrightBrowser
-except ModuleNotFoundError:  # direct execution from scripts/
+else:  # direct execution: python scripts/screen_afad_tadas_station_summaries_kendo.py
     import screen_afad_tadas_station_summaries as base
     from tadas_kendo_adapter import KendoTadasPlaywrightBrowser
 

@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-try:
+if __package__:
     from scripts import screen_afad_tadas_station_summaries as base
-except ModuleNotFoundError:  # direct execution from scripts/
+else:  # imported as a top-level module by the direct script entrypoint
     import screen_afad_tadas_station_summaries as base
 
 
