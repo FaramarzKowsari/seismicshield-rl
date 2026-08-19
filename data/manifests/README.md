@@ -44,9 +44,13 @@ disagreement fails closed for provenance review. Original cm/s² PGA and derived
 are retained. Standard gravity is exactly `g0 = 9.80665 m/s²`, so `0.15 g = 147.09975
 cm/s²`. Station summaries are not final component-eligibility evidence.
 
-The exact `DATA_LICENSE` text is retained. `U (unknown license)` sets
-`raw_redistribution_allowed` to false: public metadata, hashes, acquisition instructions,
-provenance, and processing code remain publishable, but automatic public redistribution
-of waveform bytes is disabled. Canonical time comes only from source event metadata or
-the raw UTC event header, is retained machine-readably in `event_time_utc`, and never
-comes from browser-local table rendering.
+The exact `DATA_LICENSE` text is retained. The real literal `U (unknown license)` is not
+a placeholder identity and does not trigger the generic placeholder filter, but it sets
+`raw_redistribution_allowed` to false. No permissive AFAD/TADAS license allowlist is
+currently frozen, so blank, unknown, unrecognized, and restrictive license states all
+fail closed to false; public metadata, hashes, acquisition instructions, provenance,
+and processing code remain publishable, but automatic public redistribution of waveform
+bytes is disabled. Canonical time comes only from source event metadata or the raw UTC
+event header, is retained machine-readably in `event_time_utc`, and never comes from
+browser-local table rendering. Validation parses a real ISO-8601 instant and accepts
+only explicit UTC (`Z` or `+00:00`), rather than trusting a string suffix.

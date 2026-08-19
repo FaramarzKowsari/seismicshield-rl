@@ -14,6 +14,8 @@ ground_motions:
     pga_validation_tolerance_cm_s2: 0.01
     unknown_license_literal: "U (unknown license)"
     unknown_license_raw_redistribution_allowed: false
+    raw_redistribution_license_allowlist: []
+    unrecognized_or_restrictive_license_raw_redistribution_allowed: false
     duration_fallback: "(NDATA - 1) * SAMPLING_INTERVAL_S"
     duration_fallback_requires: [ndata_at_least_2, finite_positive_sampling_interval, parsed_sample_count_equals_ndata]
   physical_events: 40

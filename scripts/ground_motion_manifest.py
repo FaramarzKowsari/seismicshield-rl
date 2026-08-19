@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import csv
+from datetime import datetime, timezone
 import hashlib
 import math
 from pathlib import Path
+import re
 from typing import Iterable
 
 SALT = "SeismicShield-RL-v0.8.0-OSF-2026"
@@ -31,6 +33,10 @@ PROVENANCE_FIELDS = (
 FORBIDDEN_MARKERS = ("fake", "placeholder", "synthetic", "dummy", "fixture", "example.com", "unknown")
 SI_UNITS = {"m/s^2", "m/s2", "m s-2"}
 CONVERTIBLE_UNITS = SI_UNITS | {"g", "gal", "cm/s^2", "cm/s2"}
+AFAD_RAW_REDISTRIBUTION_LICENSE_ALLOWLIST: frozenset[str] = frozenset()
+UTC_TIMESTAMP_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|\+00:00)$"
+)
 
 
 def afad_record_id(waveform_detail_id: str, stream: str) -> str:
@@ -89,9 +95,21 @@ def validate_component_pga(samples_cm_s2: Iterable[float], header_pga_cm_s2: flo
     return header_pga / (STANDARD_GRAVITY_M_S2 * 100.0)
 
 
-def raw_redistribution_allowed(data_license: str) -> bool:
-    """Unknown AFAD licensing always disables automatic raw-byte publication."""
-    return data_license != "U (unknown license)"
+def raw_redistribution_allowed(data_license: str | None) -> bool:
+    """Allow raw bytes only for a license explicitly frozen in the allowlist."""
+    license_text = "" if data_license is None else str(data_license).strip()
+    return license_text in AFAD_RAW_REDISTRIBUTION_LICENSE_ALLOWLIST
+
+
+def is_valid_utc_timestamp(value: str) -> bool:
+    """Return whether value is a real ISO-8601 timestamp explicitly representing UTC."""
+    if not UTC_TIMESTAMP_PATTERN.fullmatch(value):
+        return False
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return parsed.tzinfo is not None and parsed.utcoffset() == timezone.utc.utcoffset(parsed)
 
 
 def sha_key(kind: str, row: dict[str, str]) -> str:
@@ -130,16 +148,23 @@ def eligibility_errors(row: dict[str, str], *, allow_test_fixtures: bool = False
             errors.append(str(exc))
         if not row.get("event_id", "").strip():
             errors.append("blank canonical TADAS event_id")
-        event_time = row.get("event_time_utc", "")
-        if not (event_time.endswith("Z") or event_time.endswith("+00:00")):
-            errors.append("AFAD/TADAS event_time_utc is not explicit UTC")
-        if row.get("data_license") == "U (unknown license)" and row.get("raw_redistribution_allowed", "").lower() != "false":
-            errors.append("unknown license must disable automatic raw redistribution")
+        if not is_valid_utc_timestamp(row.get("event_time_utc", "")):
+            errors.append("AFAD/TADAS event_time_utc is not a valid ISO-8601 UTC timestamp")
+        if row.get("raw_redistribution_allowed", "").lower() != "false":
+            errors.append("AFAD/TADAS raw redistribution is not explicitly licensed")
     for field in PROVENANCE_FIELDS:
         value = row.get(field, "").strip()
         if not value:
             errors.append(f"blank {field}")
-        elif not allow_test_fixtures and any(marker in value.lower() for marker in FORBIDDEN_MARKERS):
+        elif (
+            not allow_test_fixtures
+            and not (
+                is_afad
+                and field == "data_license"
+                and value == "U (unknown license)"
+            )
+            and any(marker in value.lower() for marker in FORBIDDEN_MARKERS)
+        ):
             errors.append(f"non-real/placeholder {field}")
     if row.get("component", "").strip().lower() not in {
         "horizontal acceleration", "horizontal_acceleration", "horizontal",

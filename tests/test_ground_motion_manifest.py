@@ -17,6 +17,7 @@ from scripts.ground_motion_manifest import (
     afad_record_id,
     derive_usable_duration_s,
     eligibility_errors,
+    is_valid_utc_timestamp,
     raw_redistribution_allowed,
     sha_key,
     validate_component_pga,
@@ -109,6 +110,81 @@ def test_afad_pga_and_license_contracts():
     license_text = "U (unknown license)"
     assert license_text == "U (unknown license)"
     assert raw_redistribution_allowed(license_text) is False
+
+
+@pytest.mark.parametrize(
+    "license_text",
+    ["", "arbitrary license", "all rights reserved", "restricted", None],
+)
+def test_afad_raw_redistribution_has_no_permissive_default(license_text):
+    assert raw_redistribution_allowed(license_text) is False
+
+
+def valid_afad_row() -> dict[str, str]:
+    return {
+        "source": "AFAD_TADAS",
+        "event_id": "543428",
+        "raw_header_event_id": "0",
+        "record_id": "327925:HNE",
+        "waveform_detail_id": "327925",
+        "stream": "HNE",
+        "raw_filename": "327925_HNE.txt",
+        "station_id": "1201",
+        "component": "horizontal acceleration",
+        "sampling_interval_s": "0.01",
+        "usable_duration_s": "105.0",
+        "original_units": "cm/s^2",
+        "normalized_units": "m/s^2",
+        "ndata": "10501",
+        "raw_duration_derivation": "(NDATA - 1) * SAMPLING_INTERVAL_S",
+        "pga_cm_s2": "147.09975",
+        "pga_g": "0.15",
+        "event_date": "2023-02-06",
+        "event_time_utc": "2023-02-06T01:17:34Z",
+        "latitude": "37.17",
+        "longitude": "37.03",
+        "source_url_or_access_reference": "https://tadas.afad.gov.tr/event-detail/543428",
+        "preprocessing_status": "raw-validated",
+        "raw_sha256": "a" * 64,
+        "processed_sha256": "b" * 64,
+        "data_license": "U (unknown license)",
+        "raw_redistribution_allowed": "false",
+    }
+
+
+def test_unknown_afad_license_is_preserved_without_placeholder_rejection():
+    row = valid_afad_row()
+    assert row["data_license"] == "U (unknown license)"
+    assert eligibility_errors(row) == []
+
+
+@pytest.mark.parametrize(
+    ("timestamp", "valid"),
+    [
+        ("2023-02-06T01:17:34Z", True),
+        ("2023-02-06T01:17:34+00:00", True),
+        ("2023-02-06T01:17:34.123Z", True),
+        ("bananaZ", False),
+        ("2023-99-99T99:99:99Z", False),
+        ("2023-02-06T04:17:34+03:00", False),
+        ("2023-02-06 01:17:34Z", False),
+        ("", False),
+    ],
+)
+def test_strict_utc_timestamp_validation(timestamp, valid):
+    assert is_valid_utc_timestamp(timestamp) is valid
+    row = dict(valid_afad_row(), event_time_utc=timestamp)
+    utc_errors = [error for error in eligibility_errors(row) if "event_time_utc" in error]
+    assert bool(utc_errors) is not valid
+
+
+def test_afad_redistribution_flag_must_fail_closed():
+    errors = eligibility_errors(dict(valid_afad_row(), raw_redistribution_allowed="true"))
+    assert "AFAD/TADAS raw redistribution is not explicitly licensed" in errors
+
+
+def test_blank_afad_license_fails_eligibility():
+    assert "blank data_license" in eligibility_errors(dict(valid_afad_row(), data_license=""))
 
 
 def test_event_level_split_and_partition_counts():
