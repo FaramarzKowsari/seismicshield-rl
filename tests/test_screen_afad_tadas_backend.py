@@ -1,12 +1,17 @@
 from datetime import timedelta
+import csv
 import subprocess
 import sys
 
 from scripts import screen_afad_tadas_backend as mod
 
 
-def _queue_row(event_id="551067"):
-    return {"event_id": event_id, "event_date_from_export": "20-02-2023  09:04"}
+def _queue_row(event_id="551067", magnitude="7.7"):
+    return {
+        "event_id": event_id,
+        "event_date_from_export": "20-02-2023  09:04",
+        "magnitude": magnitude,
+    }
 
 
 def test_live_date_shift_is_inferred_and_reused_without_hardcoding_timezone():
@@ -27,6 +32,24 @@ def test_live_date_shift_is_inferred_and_reused_without_hardcoding_timezone():
     assert payload["eaEventId"] == "00456"
     assert payload["startDate"] == "2023-02-19T01:00:00.000Z"
     assert payload["endDate"] == "2023-02-22T00:59:59.000Z"
+    assert payload["fromMagnitude"] is None
+
+
+def test_payload_neutralizes_ui_default_magnitude_floor_for_sub3_event():
+    template = {
+        "fromMagnitude": 3,
+        "startDate": "2024-01-01T00:00:00.000Z",
+        "endDate": "2024-01-03T23:59:59.000Z",
+        "eaEventId": "bootstrap",
+    }
+    payload = mod.build_payload_from_live_template(
+        template,
+        {"event_id": "195841", "event_date_from_export": "02-01-2024 12:00", "magnitude": "2.4"},
+        pad_days=1,
+        shift=timedelta(0),
+    )
+    assert payload["eaEventId"] == "195841"
+    assert payload["fromMagnitude"] is None
 
 
 def test_inconsistent_live_date_shift_fails_closed():
@@ -102,6 +125,34 @@ def test_ui_parity_allows_csv_rounding_but_not_classification_drift():
         assert "mismatch" in str(exc)
     else:
         raise AssertionError("classification input drift must fail")
+
+
+def test_old_ui_parity_is_used_only_for_known_magnitude_at_least_three():
+    assert mod.ui_parity_is_valid_for_queue_row(_queue_row(magnitude="7.7"))
+    assert mod.ui_parity_is_valid_for_queue_row(_queue_row(magnitude="3"))
+    assert not mod.ui_parity_is_valid_for_queue_row(_queue_row(magnitude="2.4"))
+    assert not mod.ui_parity_is_valid_for_queue_row(_queue_row(magnitude=""))
+    assert not mod.ui_parity_is_valid_for_queue_row(_queue_row(magnitude="not-a-number"))
+
+
+def test_corrected_ledger_contract_rejects_prefixed_or_missing_contract(tmp_path):
+    ledger = tmp_path / "ledger.csv"
+    with ledger.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["event_id", "status", "query_contract"])
+        writer.writeheader()
+        writer.writerow({"event_id": "1", "status": "REJECT_SUMMARY_PGA", "query_contract": ""})
+    try:
+        mod._load(ledger, require_query_contract=True)
+    except ValueError as exc:
+        assert "stale/unknown query contract" in str(exc)
+    else:
+        raise AssertionError("pre-fix ledger must not be silently resumed")
+
+
+def test_corrected_defaults_use_fresh_nomag_artifacts():
+    assert mod.QUERY_CONTRACT == "event-specific;fromMagnitude=null"
+    assert mod.DEFAULT_LEDGER.name == "station_summary_backend_screen_nomag.csv"
+    assert mod.DEFAULT_CANDIDATE_DIR.name == "tadas-backend-candidates-nomag"
 
 
 def test_direct_entrypoint_help_runs_from_repo_root():
