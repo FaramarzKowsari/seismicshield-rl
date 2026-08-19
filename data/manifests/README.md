@@ -1,25 +1,34 @@
 # Ground-motion manifest contract
 
-## Three distinct provenance stages
+## Four distinct provenance stages
 
 1. **Event-candidate queue.** `scripts/build_afad_tadas_event_queue.py` reads a
    user-supplied local TADAS Event Search CSV, excludes blank identifiers, and orders
    known event candidates by the frozen event hash. Its CSV and audit metadata default
    to `results/local/afad_tadas/`; neither the source export nor a real generated queue
    belongs in Git.
-2. **Raw component staging audit.** `scripts/audit_afad_tadas_raw_zip.py` reads a local
+2. **Station-summary necessary-condition prescreen.**
+   `scripts/screen_afad_tadas_station_summaries.py` follows the frozen event queue,
+   retrieves local station-summary CSVs through an authenticated headed browser session,
+   hashes and validates them, and rejects events that cannot possibly yield four
+   threshold-passing horizontal components. Because one station can contribute at most
+   HNE and HNN, at least two distinct station summaries must have PGA >= `0.15 g` before
+   the event advances. This is only a necessary-condition screen: station-summary PGA
+   may be controlled by HNZ or by only one horizontal component.
+3. **Raw component staging audit.** `scripts/audit_afad_tadas_raw_zip.py` reads a local
    ZIP without extracting or copying waveform files, audits HNE, HNN, and HNZ component
    provenance against explicitly supplied canonical identifiers, and writes a separate
    local JSON report under `results/local/afad_tadas/raw_audits/`. This stage does not
    create processed hashes and must never write the final manifest.
-3. **Final frozen ground-motion manifest.** `ground_motion_manifest.csv` is produced
+4. **Final frozen ground-motion manifest.** `ground_motion_manifest.csv` is produced
    only by the later processing and freeze workflow after eligible horizontal records
    have complete raw and processed provenance. Raw staging records are not manifest
    records.
 
-Candidate queues and raw audits are provenance/data-selection infrastructure and are
-**not confirmatory seismic-performance results**. They do not unblock the confirmatory
-gate, establish the final event/record set, or authorize publication of raw waveforms.
+Candidate queues, station-summary screens, and raw audits are provenance/data-selection
+infrastructure and are **not confirmatory seismic-performance results**. They do not
+unblock the confirmatory gate, establish the final event/record set, or authorize
+publication of raw waveforms.
 
 The frozen target is **40 known physical earthquake events and 160 real horizontal
 acceleration records**: exactly four retained records per event. Splitting occurs at the
