@@ -3,8 +3,9 @@
 
 Infrastructure/data-selection diagnostic only. The frozen SeismicShield-RL eligibility
 criteria do not include earthquake magnitude, so this script compares otherwise-identical
-backend requests for one queue event below magnitude 3 using the live authenticated request
-contract. Sensitive authorization/header values remain in memory only.
+backend requests for a known-magnitude event below M3 that demonstrably has waveform rows
+when no magnitude floor is applied. Sensitive authorization/header values remain in memory
+only.
 """
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ import argparse
 import copy
 import hashlib
 import json
+import time
 from pathlib import Path
 
 if __package__:
@@ -36,7 +38,7 @@ def parse_magnitude(value: str) -> float | None:
         raise ValueError(f"non-numeric queue magnitude {value!r}") from exc
 
 
-def select_sub3_event(rows: list[dict[str, str]], requested_rank: int = 0) -> dict[str, str]:
+def sub3_rows(rows: list[dict[str, str]], requested_rank: int = 0) -> list[dict[str, str]]:
     if requested_rank:
         if not 1 <= requested_rank <= len(rows):
             raise ValueError("requested rank is outside queue")
@@ -44,12 +46,15 @@ def select_sub3_event(rows: list[dict[str, str]], requested_rank: int = 0) -> di
         mag = parse_magnitude(row.get("magnitude", ""))
         if mag is None or mag >= 3.0:
             raise ValueError(f"rank {requested_rank} is not a known-magnitude event below M3")
-        return row
+        return [row]
+    selected = []
     for row in rows:
         mag = parse_magnitude(row.get("magnitude", ""))
         if mag is not None and mag < 3.0:
-            return row
-    raise ValueError("queue contains no known-magnitude event below M3")
+            selected.append(row)
+    if not selected:
+        raise ValueError("queue contains no known-magnitude event below M3")
+    return selected
 
 
 def canonical_json_bytes(value: object) -> bytes:
@@ -76,15 +81,27 @@ def main() -> int:
     p.add_argument("--profile-dir", type=Path, default=base.DEFAULT_PROFILE_DIR)
     p.add_argument("--pad-days", type=int, default=1)
     p.add_argument("--timeout-ms", type=int, default=30000)
+    p.add_argument("--max-sub3-probes", type=int, default=100)
+    p.add_argument("--delay-s", type=float, default=0.20)
     p.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = p.parse_args()
 
+    if args.max_sub3_probes < 1:
+        p.error("--max-sub3-probes must be >= 1")
+    if args.delay_s < 0:
+        p.error("--delay-s must be >= 0")
+
     rows = base.read_queue(args.queue)
-    target = select_sub3_event(rows, args.rank)
-    magnitude = parse_magnitude(target.get("magnitude", ""))
-    assert magnitude is not None and magnitude < 3.0
+    candidates = sub3_rows(rows, args.rank)
     if not 1 <= args.bootstrap_rank <= len(rows):
         p.error("--bootstrap-rank outside queue")
+
+    attempted: list[dict[str, object]] = []
+    target = None
+    value_null = None
+    value_m3 = None
+    status_null = status_m3 = 0
+    ct_null = ct_m3 = ""
 
     with KendoTadasPlaywrightBrowser(
         args.profile_dir,
@@ -97,14 +114,6 @@ def main() -> int:
         template, headers, shift = backend._bootstrap(
             browser, rows[args.bootstrap_rank - 1], pad_days=args.pad_days, timeout_ms=args.timeout_ms
         )
-        base_payload = backend.build_payload_from_live_template(
-            template, target, pad_days=args.pad_days, shift=shift
-        )
-
-        payload_m3 = copy.deepcopy(base_payload)
-        payload_m3["fromMagnitude"] = 3
-        payload_null = copy.deepcopy(base_payload)
-        payload_null["fromMagnitude"] = None
 
         def post(payload: dict[str, object]) -> tuple[int, str, object]:
             resp = browser.context.request.post(
@@ -123,11 +132,49 @@ def main() -> int:
                 value = json.loads(body.decode("utf-8-sig"))
             except Exception as exc:
                 raise RuntimeError("GetWaveforms returned invalid JSON") from exc
+            if not isinstance(value, list):
+                raise RuntimeError(f"GetWaveforms top-level JSON is {type(value).__name__}, expected list")
             return resp.status, content_type, value
 
-        status_m3, ct_m3, value_m3 = post(payload_m3)
-        status_null, ct_null, value_null = post(payload_null)
+        for row in candidates[: args.max_sub3_probes]:
+            magnitude = parse_magnitude(row.get("magnitude", ""))
+            assert magnitude is not None and magnitude < 3.0
+            base_payload = backend.build_payload_from_live_template(
+                template, row, pad_days=args.pad_days, shift=shift
+            )
+            payload_null = copy.deepcopy(base_payload)
+            payload_null["fromMagnitude"] = None
+            status_null_i, ct_null_i, value_null_i = post(payload_null)
+            attempted.append({
+                "rank": int(row["rank"]),
+                "event_id": row["event_id"],
+                "magnitude": magnitude,
+                "unfiltered_row_count": len(value_null_i),
+            })
+            print(
+                f"[probe {len(attempted)}] rank {row['rank']} EventID {row['event_id']} "
+                f"M={magnitude:g}: fromMagnitude=null rows={len(value_null_i)}"
+            )
+            if value_null_i:
+                target = row
+                value_null = value_null_i
+                status_null = status_null_i
+                ct_null = ct_null_i
+                payload_m3 = copy.deepcopy(base_payload)
+                payload_m3["fromMagnitude"] = 3
+                status_m3, ct_m3, value_m3 = post(payload_m3)
+                break
+            if args.delay_s:
+                time.sleep(args.delay_s)
 
+    if target is None or value_null is None or value_m3 is None:
+        raise RuntimeError(
+            f"no sub-M3 event with waveform rows found in first {len(attempted)} probed candidates; "
+            "increase --max-sub3-probes or provide --rank for a known testable event"
+        )
+
+    magnitude = parse_magnitude(target.get("magnitude", ""))
+    assert magnitude is not None and magnitude < 3.0
     summary_m3 = response_summary(value_m3, target["event_id"])
     summary_null = response_summary(value_null, target["event_id"])
     same_json = canonical_json_bytes(value_m3) == canonical_json_bytes(value_null)
@@ -150,6 +197,7 @@ def main() -> int:
             "sensitive_header_values_recorded": False,
             "output_location_expected_private": True,
         },
+        "attempted_sub3_events": attempted,
         "target": {
             "rank": int(target["rank"]),
             "event_id": target["event_id"],
