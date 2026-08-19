@@ -29,6 +29,21 @@ def assert_preserved_value(kind: str, observed: str, expected: str) -> None:
         )
 
 
+def keyboard_commit_kendo_date(locator, value: str, *, delay_ms: int = 12) -> None:
+    """Commit a Kendo DateInput through real keyboard events.
+
+    The live TADAS widget rejected DOM-style ``fill`` plus synthetic change events and
+    restored its prior date. Kendo DateInput is keyboard/segment driven, so this helper
+    follows the user interaction path: select all, clear, type sequentially, accept, blur.
+    """
+    locator.click()
+    locator.press("Control+A")
+    locator.press("Backspace")
+    locator.press_sequentially(value, delay=delay_ms)
+    locator.press("Enter")
+    locator.press("Tab")
+
+
 class KendoTadasPlaywrightBrowser(base.TadasPlaywrightBrowser):
     """Use stable DOM structure observed in the current TADAS Kendo search form."""
 
@@ -89,14 +104,17 @@ class KendoTadasPlaywrightBrowser(base.TadasPlaywrightBrowser):
     def _set_control(self, kind: str, value: str) -> None:
         assert self.page is not None
         locator = self._input(kind)
-        locator.click()
-        locator.fill(value)
-        # Kendo/Angular may not commit model state from a raw DOM value alone. Playwright
-        # fill emits input, and these additional events plus blur force widget/model sync.
-        locator.dispatch_event("input")
-        locator.dispatch_event("change")
-        locator.press("Tab")
-        self.page.wait_for_timeout(100)
+
+        if kind in {"start_date", "end_date"}:
+            keyboard_commit_kendo_date(locator, value)
+        else:
+            locator.click()
+            locator.fill(value)
+            locator.dispatch_event("input")
+            locator.dispatch_event("change")
+            locator.press("Tab")
+
+        self.page.wait_for_timeout(150)
         assert_preserved_value(kind, locator.input_value(), value)
 
     def _verify_search_form(self, event_id: str, start: str, end: str) -> None:
@@ -123,9 +141,8 @@ class KendoTadasPlaywrightBrowser(base.TadasPlaywrightBrowser):
         except Exception:
             self.page.wait_for_timeout(1500)
 
-        # Critical anti-false-rejection guard: the current Kendo widget has been observed
-        # to reset dates when its Angular model was not committed. Never export/screen if
-        # any submitted search value changed after Search.
+        # Critical anti-false-rejection guard: never export/screen if TADAS changed any
+        # submitted search value after Search.
         self._verify_search_form(event_id, start, end)
 
         csv_button = self._action("csv_button", ("csv",))
