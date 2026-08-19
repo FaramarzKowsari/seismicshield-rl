@@ -3,6 +3,19 @@ freeze:
   version: v0.8.0
   status: preregistration_infrastructure_only
 ground_motions:
+  afad_tadas_contract:
+    canonical_source: AFAD_TADAS
+    canonical_event_id: TADAS_Event_Search_or_Event_Detail_identifier
+    canonical_record_id: "{waveform_detail_id}:{stream}"
+    eligible_horizontal_streams: [HNE, HNN]
+    rejected_vertical_streams: [HNZ]
+    event_time_authority: source_event_metadata_or_raw_UTC_event_header
+    standard_gravity_m_s2: 9.80665
+    pga_validation_tolerance_cm_s2: 0.01
+    unknown_license_literal: "U (unknown license)"
+    unknown_license_raw_redistribution_allowed: false
+    duration_fallback: "(NDATA - 1) * SAMPLING_INTERVAL_S"
+    duration_fallback_requires: [ndata_at_least_2, finite_positive_sampling_interval, parsed_sample_count_equals_ndata]
   physical_events: 40
   records_per_event: 4
   total_records: 160
@@ -49,4 +62,3 @@ analysis:
     family: [MAPPO_vs_PPO, MAPPO_vs_NSGA-II, MAPPO_vs_IPPO]
   fixed_failure_vector: [1.05, 5.00, 5.00]
   separate_tunable_failure_penalty_permitted: false
-

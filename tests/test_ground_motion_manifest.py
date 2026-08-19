@@ -8,7 +8,20 @@ from pathlib import Path
 import pytest
 
 from scripts.build_ground_motion_manifest import build
-from scripts.ground_motion_manifest import COLUMNS, PARTITIONS, eligibility_errors, sha_key, write_manifest
+from scripts.ground_motion_manifest import (
+    AFAD_TADAS_SOURCE,
+    COLUMNS,
+    PARTITIONS,
+    STANDARD_GRAVITY_M_S2,
+    afad_event_identity,
+    afad_record_id,
+    derive_usable_duration_s,
+    eligibility_errors,
+    raw_redistribution_allowed,
+    sha_key,
+    validate_component_pga,
+    write_manifest,
+)
 from scripts.validate_ground_motion_manifest import validate
 
 
@@ -20,15 +33,23 @@ def synthetic_rows(events: int = 40, records: int = 4) -> list[dict[str, str]]:
             rows.append({
                 "source": "synthetic-fixture-software-validation-only",
                 "event_id": f"synthetic-fixture-event-{event:02d}",
+                "raw_header_event_id": "",
                 "record_id": token,
+                "waveform_detail_id": "",
+                "stream": "",
+                "raw_filename": f"{token}.txt",
                 "station_id": f"synthetic-fixture-station-{record}",
                 "component": "horizontal acceleration",
                 "sampling_interval_s": "0.02",
                 "usable_duration_s": "10",
                 "original_units": "g",
                 "normalized_units": "m/s^2",
+                "ndata": "501",
+                "raw_duration_derivation": "explicit",
+                "pga_cm_s2": "147.09975",
                 "pga_g": "0.15",
                 "event_date": "2000-01-01",
+                "event_time_utc": "2000-01-01T00:00:00Z",
                 "latitude": "0",
                 "longitude": "0",
                 "partition": "",
@@ -36,6 +57,8 @@ def synthetic_rows(events: int = 40, records: int = 4) -> list[dict[str, str]]:
                 "preprocessing_status": "synthetic-fixture-test-only",
                 "raw_sha256": f"{event * records + record + 1:064x}",
                 "processed_sha256": f"{event * records + record + 1001:064x}",
+                "data_license": "synthetic-fixture-license",
+                "raw_redistribution_allowed": "false",
                 "eligibility_status": "",
                 "eligibility_reason": "",
             })
@@ -53,6 +76,39 @@ def test_hashing_is_deterministic_and_scoped():
     row = synthetic_rows(1, 1)[0]
     assert sha_key("event", row) == sha_key("event", dict(row))
     assert sha_key("event", row) != sha_key("record", row)
+
+
+def test_afad_tadas_identity_and_stream_contracts():
+    assert AFAD_TADAS_SOURCE == "AFAD_TADAS"
+    assert afad_event_identity("543428", 0) == ("543428", "0")
+    assert afad_record_id("327925", "HNE") == "327925:HNE"
+    assert afad_record_id("327925", "hnn") == "327925:HNN"
+    with pytest.raises(ValueError, match="not an eligible horizontal"):
+        afad_record_id("327925", "HNZ")
+    a = {"source": AFAD_TADAS_SOURCE, "event_id": "543428", "record_id": "327925:HNE"}
+    b = dict(a)
+    assert sha_key("record", a) == sha_key("record", b)
+
+
+def test_afad_duration_derivation_fails_closed():
+    assert derive_usable_duration_s("", 10501, 0.01, 10501) == (
+        105.0, "(NDATA - 1) * SAMPLING_INTERVAL_S",
+    )
+    with pytest.raises(ValueError, match="sample-count"):
+        derive_usable_duration_s(None, 10501, 0.01, 10500)
+    for bad_dt in (0, -0.01, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="sampling interval"):
+            derive_usable_duration_s(None, 2, bad_dt, 2)
+
+
+def test_afad_pga_and_license_contracts():
+    assert STANDARD_GRAVITY_M_S2 * 100 * 0.15 == 147.09975
+    assert validate_component_pga([-147.09975, 12], 147.10975) == pytest.approx(147.10975 / 980.665)
+    with pytest.raises(ValueError, match="disagrees"):
+        validate_component_pga([-147.09975, 12], 147.109751)
+    license_text = "U (unknown license)"
+    assert license_text == "U (unknown license)"
+    assert raw_redistribution_allowed(license_text) is False
 
 
 def test_event_level_split_and_partition_counts():
@@ -91,4 +147,3 @@ def test_validator_accepts_test_fixture_and_rejects_leakage(tmp_path: Path):
     write_manifest(rows, path)
     errors = validate(path, allow_test_fixtures=True)
     assert any("event leakage" in error for error in errors)
-
