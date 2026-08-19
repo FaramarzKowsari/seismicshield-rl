@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Capture privacy-safe TADAS search network metadata for backend discovery.
+"""Capture privacy-safe TADAS network metadata for backend discovery.
 
 This is diagnostic/provenance infrastructure only. It does not change any frozen
 selection rule and does not inspect confirmatory performance results.
@@ -83,6 +83,17 @@ def sanitize_post_data(post_data: str | None, content_type: str | None = None):
     return "<body omitted>"
 
 
+def sanitize_ws_payload(payload):
+    """Keep only redacted structured text or binary length from WebSocket frames."""
+    if isinstance(payload, bytes):
+        return {"binary_length": len(payload)}
+    text = str(payload)
+    structured = sanitize_post_data(text)
+    if structured in {"<body omitted>", "<non-json body omitted>", "<form body omitted>"}:
+        return {"text_length": len(text), "content": structured}
+    return {"text_length": len(text), "content": structured}
+
+
 def select_headers(headers: dict[str, str], allowlist: set[str]) -> dict[str, str]:
     return {
         key.lower(): value
@@ -91,9 +102,18 @@ def select_headers(headers: dict[str, str], allowlist: set[str]) -> dict[str, st
     }
 
 
+def request_host(url: str) -> str:
+    return urlsplit(url).netloc.lower()
+
+
+def is_tadas_host(url: str) -> bool:
+    return request_host(url) == urlsplit(TADAS_ORIGIN).netloc.lower()
+
+
 def should_capture_request(url: str, resource_type: str) -> bool:
-    """Keep same-origin dynamic/navigation traffic while dropping obvious static assets."""
-    return url.startswith(TADAS_ORIGIN) and resource_type not in STATIC_RESOURCE_TYPES
+    """Keep HTTP(S) non-static traffic from any host; search may use another backend host."""
+    scheme = urlsplit(url).scheme.lower()
+    return scheme in {"http", "https"} and resource_type not in STATIC_RESOURCE_TYPES
 
 
 def main() -> int:
@@ -119,6 +139,7 @@ def main() -> int:
         parser.error("queue rank mismatch")
 
     captured: list[dict[str, object]] = []
+    phase = {"name": "page_load"}
 
     with KendoTadasPlaywrightBrowser(
         args.profile_dir,
@@ -138,9 +159,12 @@ def main() -> int:
             headers = request.headers
             safe_headers = select_headers(headers, SAFE_REQUEST_HEADERS)
             captured.append({
+                "phase": phase["name"],
                 "kind": "request",
                 "resource_type": request.resource_type,
                 "navigation": bool(request.is_navigation_request()),
+                "same_tadas_host": is_tadas_host(request.url),
+                "host": request_host(request.url),
                 "method": request.method,
                 "url": sanitize_url(request.url),
                 "headers": safe_headers,
@@ -155,9 +179,12 @@ def main() -> int:
             if not should_capture_request(response.url, request.resource_type):
                 return
             captured.append({
+                "phase": phase["name"],
                 "kind": "response",
                 "resource_type": request.resource_type,
                 "navigation": bool(request.is_navigation_request()),
+                "same_tadas_host": is_tadas_host(response.url),
+                "host": request_host(response.url),
                 "method": request.method,
                 "url": sanitize_url(response.url),
                 "status": response.status,
@@ -168,30 +195,61 @@ def main() -> int:
             if not should_capture_request(request.url, request.resource_type):
                 return
             captured.append({
+                "phase": phase["name"],
                 "kind": "request_failed",
                 "resource_type": request.resource_type,
                 "navigation": bool(request.is_navigation_request()),
+                "same_tadas_host": is_tadas_host(request.url),
+                "host": request_host(request.url),
                 "method": request.method,
                 "url": sanitize_url(request.url),
                 "failure": str(request.failure or ""),
             })
 
-        # BrowserContext events are broader than Page events and also cover requests
-        # initiated outside the main page frame. The previous XHR/fetch-only Page probe
-        # captured zero requests on the live TADAS Search action.
+        def on_websocket(websocket) -> None:
+            captured.append({
+                "phase": phase["name"],
+                "kind": "websocket_open",
+                "same_tadas_host": is_tadas_host(websocket.url),
+                "host": request_host(websocket.url),
+                "url": sanitize_url(websocket.url),
+            })
+
+            def frame_sent(payload) -> None:
+                captured.append({
+                    "phase": phase["name"],
+                    "kind": "websocket_frame_sent",
+                    "host": request_host(websocket.url),
+                    "url": sanitize_url(websocket.url),
+                    "payload": sanitize_ws_payload(payload),
+                })
+
+            def frame_received(payload) -> None:
+                captured.append({
+                    "phase": phase["name"],
+                    "kind": "websocket_frame_received",
+                    "host": request_host(websocket.url),
+                    "url": sanitize_url(websocket.url),
+                    "payload": sanitize_ws_payload(payload),
+                })
+
+            websocket.on("framesent", frame_sent)
+            websocket.on("framereceived", frame_received)
+
         context.on("request", on_request)
         context.on("response", on_response)
         context.on("requestfailed", on_request_failed)
+        page.on("websocket", on_websocket)
 
         start, end = base.date_window(row["event_date_from_export"], pad_days=args.pad_days)
+        phase["name"] = "page_load"
         page.goto(base.TADAS_WAVEFORM_SEARCH_URL, wait_until="domcontentloaded")
         browser._set_control("event_id", row["event_id"])
         browser._set_control("start_date", start)
         browser._set_control("end_date", end)
         browser._verify_search_form(row["event_id"], start, end)
 
-        # Drop page-load traffic; retain only network activity caused by Search.
-        captured.clear()
+        phase["name"] = "search"
         browser._action("search_button", ("search", "query", "sorgula", "ara")).click()
         try:
             page.wait_for_load_state("networkidle", timeout=min(args.timeout_ms, 15000))
@@ -199,19 +257,27 @@ def main() -> int:
             page.wait_for_timeout(2500)
         browser._verify_search_form(row["event_id"], start, end)
         page.wait_for_timeout(1500)
+        phase["name"] = "done"
 
     request_records = [record for record in captured if record["kind"] == "request"]
     type_counts: dict[str, int] = {}
+    host_counts: dict[str, int] = {}
+    phase_counts: dict[str, int] = {}
     for record in request_records:
         resource_type = str(record["resource_type"])
+        host = str(record["host"])
+        record_phase = str(record["phase"])
         type_counts[resource_type] = type_counts.get(resource_type, 0) + 1
+        host_counts[host] = host_counts.get(host, 0) + 1
+        phase_counts[record_phase] = phase_counts.get(record_phase, 0) + 1
 
     trace = {
-        "schema_version": 2,
+        "schema_version": 3,
         "privacy": {
             "cookies_recorded": False,
             "authorization_recorded": False,
             "sensitive_query_or_body_keys_redacted": True,
+            "websocket_unstructured_payloads_omitted": True,
         },
         "probe": {
             "rank": args.rank,
@@ -221,16 +287,24 @@ def main() -> int:
             "end_date": end,
         },
         "request_resource_type_counts": type_counts,
+        "request_host_counts": host_counts,
+        "request_phase_counts": phase_counts,
         "network": captured,
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(trace, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Wrote sanitized trace: {args.out}")
-    print(f"Captured {len(request_records)} same-origin non-static requests")
+    print(f"Captured {len(request_records)} HTTP(S) non-static requests across all hosts")
     if type_counts:
         print("Resource types: " + ", ".join(f"{key}={value}" for key, value in sorted(type_counts.items())))
     else:
         print("Resource types: none")
+    if host_counts:
+        print("Hosts: " + ", ".join(f"{key}={value}" for key, value in sorted(host_counts.items())))
+    else:
+        print("Hosts: none")
+    websocket_events = sum(1 for record in captured if str(record["kind"]).startswith("websocket"))
+    print(f"WebSocket events captured: {websocket_events}")
     print("No Cookie or Authorization header values are written to the trace.")
     return 0
 
