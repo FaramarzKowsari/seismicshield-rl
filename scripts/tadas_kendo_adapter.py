@@ -18,6 +18,7 @@ else:  # imported as a top-level module by the direct script entrypoint
 DATE_INPUT_SELECTOR = "input.k-input:not(.k-formatted-value):visible"
 EVENT_ID_SELECTOR = "input[name='txtEaEventId']:visible"
 CSV_BUTTON_SELECTOR = "button:has(.k-i-file-csv):visible"
+TADAS_ORIGIN = "https://tadas.afad.gov.tr"
 
 
 def assert_preserved_value(kind: str, observed: str, expected: str) -> None:
@@ -29,23 +30,39 @@ def assert_preserved_value(kind: str, observed: str, expected: str) -> None:
         )
 
 
-def keyboard_commit_kendo_date(locator, value: str, *, delay_ms: int = 12) -> None:
-    """Commit a Kendo DateInput through real keyboard events.
+def clipboard_commit_kendo_date(page, locator, value: str) -> None:
+    """Commit a complete Kendo DateInput value through its supported paste path.
 
-    The live TADAS widget rejected DOM-style ``fill`` plus synthetic change events and
-    restored its prior date. Kendo DateInput is keyboard/segment driven, so this helper
-    follows the user interaction path: select all, clear, type sequentially, accept, blur.
+    The live TADAS control is a segmented Kendo DateInput. Sequentially typing a fully
+    formatted value caused the separators to be interpreted as segment navigation and
+    produced malformed text such as ``18-month-3202 04:minute:00``. Kendo supports
+    selecting the complete DateInput value and pasting a full date, so use a real
+    Ctrl+A/Ctrl+V path with the browser clipboard instead of DOM mutation or character-
+    by-character entry.
     """
+    page.evaluate("text => navigator.clipboard.writeText(text)", value)
     locator.click()
     locator.press("Control+A")
-    locator.press("Backspace")
-    locator.press_sequentially(value, delay=delay_ms)
-    locator.press("Enter")
+    locator.press("Control+V")
     locator.press("Tab")
 
 
 class KendoTadasPlaywrightBrowser(base.TadasPlaywrightBrowser):
     """Use stable DOM structure observed in the current TADAS Kendo search form."""
+
+    def __enter__(self):
+        result = super().__enter__()
+        assert self.context is not None
+        try:
+            self.context.grant_permissions(
+                ["clipboard-read", "clipboard-write"], origin=TADAS_ORIGIN
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                "could not grant Chromium clipboard permission required for strict "
+                "Kendo full-date paste"
+            ) from exc
+        return result
 
     def _input(self, kind: str):
         assert self.page is not None
@@ -106,7 +123,7 @@ class KendoTadasPlaywrightBrowser(base.TadasPlaywrightBrowser):
         locator = self._input(kind)
 
         if kind in {"start_date", "end_date"}:
-            keyboard_commit_kendo_date(locator, value)
+            clipboard_commit_kendo_date(self.page, locator, value)
         else:
             locator.click()
             locator.fill(value)
@@ -114,7 +131,7 @@ class KendoTadasPlaywrightBrowser(base.TadasPlaywrightBrowser):
             locator.dispatch_event("change")
             locator.press("Tab")
 
-        self.page.wait_for_timeout(150)
+        self.page.wait_for_timeout(200)
         assert_preserved_value(kind, locator.input_value(), value)
 
     def _verify_search_form(self, event_id: str, start: str, end: str) -> None:
