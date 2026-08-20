@@ -69,6 +69,14 @@ def test_eventdata_url_uses_exact_candidate_quality_class():
     assert query["data-type"] == ["ACC"]
 
 
+def test_eventdata_url_blank_location_avoids_double_dash_backend_collision():
+    waveform = _waveform("A")
+    waveform["location"] = ""
+    url = audit.build_eventdata_url("IT-TEST-1", waveform)
+    assert "location=" in url
+    assert "location=--" not in url
+
+
 def test_passing_records_requires_same_accelerometric_family():
     inspection = {
         "components": [
