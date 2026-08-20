@@ -69,8 +69,17 @@ def normalize_processing(value: Any) -> str:
 
 
 def normalize_location(value: Any) -> str:
+    """Normalize Dataset Selection location identity to the ASCII-header representation.
+
+    ESM documents ``--`` as a special query value for blank location IDs, but the live Event-Data
+    service currently returns HTTP 400 because its backend command parser interprets the literal
+    double dash as an option terminator.  An empty query value (``location=``) avoids that parser
+    collision and matches the blank ``LOCATION:`` value in returned DYNA ASCII headers.
+    """
     location = str(value or "").strip()
-    return location if location else "--"
+    if location == "--":
+        return ""
+    return location
 
 
 def normalize_instrument_pattern(value: Any) -> str:

@@ -34,6 +34,16 @@ def test_direct_eventdata_url_preserves_wildcard_identity():
     assert "quality-class=BEST%2CGOOD" in url
 
 
+def test_blank_location_avoids_double_dash_backend_collision():
+    blank = {**SAMPLE, "location_code": ""}
+    url = mod.build_eventdata_url(blank)
+    assert "location=" in url
+    assert "location=--" not in url
+    assert mod.normalize_location(None) == ""
+    assert mod.normalize_location("") == ""
+    assert mod.normalize_location("--") == ""
+
+
 def test_instrument_normalization_accepts_accelerometers_only():
     assert mod.normalize_instrument_pattern("HN*") == "HN*"
     assert mod.normalize_instrument_pattern("hn") == "HN*"
@@ -42,13 +52,13 @@ def test_instrument_normalization_accepts_accelerometers_only():
         mod.normalize_instrument_pattern("HH*")
 
 
-def _component(stream: str, pga: float, *, station: str = "ACC7") -> str:
+def _component(stream: str, pga: float, *, station: str = "ACC7", location: str = "00") -> str:
     return "\n".join(
         [
             "EVENT_ID: IT-2005-0043",
             "NETWORK: 1V",
             f"STATION_CODE: {station}",
-            "LOCATION: 00",
+            f"LOCATION: {location}",
             "SAMPLING_INTERVAL_S: 0.005",
             "NDATA: 24001",
             "DURATION_S: 120.0",
@@ -62,13 +72,13 @@ def _component(stream: str, pga: float, *, station: str = "ACC7") -> str:
     )
 
 
-def _zip_bytes(*, bad_station: bool = False) -> bytes:
+def _zip_bytes(*, bad_station: bool = False, location: str = "00") -> bytes:
     buf = io.BytesIO()
     station = "OTHER" if bad_station else "ACC7"
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("x.HNE.ASC", _component("HNE", 200.0, station=station))
-        zf.writestr("x.HNN.ASC", _component("HNN", 180.0, station=station))
-        zf.writestr("x.HNZ.ASC", _component("HNZ", 250.0, station=station))
+        zf.writestr("x.HNE.ASC", _component("HNE", 200.0, station=station, location=location))
+        zf.writestr("x.HNN.ASC", _component("HNN", 180.0, station=station, location=location))
+        zf.writestr("x.HNZ.ASC", _component("HNZ", 250.0, station=station, location=location))
     return buf.getvalue()
 
 
@@ -84,6 +94,18 @@ def test_ascii_zip_component_checks_and_vertical_exclusion():
     assert by_stream["HNZ"]["checks"]["horizontal_orientation"] is False
     assert info["max_horizontal_header_pga_cm_s2"] == 200.0
     assert info["dataset_selection_to_header_within_0p01"] is True
+
+
+def test_blank_location_identity_matches_blank_ascii_header():
+    info = mod.inspect_ascii_zip(
+        _zip_bytes(location=""),
+        {**SAMPLE, "location_code": "", "corr_hz_PGA": 200.0},
+    )
+    assert info["passing_horizontal_count"] == 2
+    assert all(
+        row["checks"]["identity"]
+        for row in info["components"]
+    )
 
 
 def test_identity_mismatch_fails_closed():
