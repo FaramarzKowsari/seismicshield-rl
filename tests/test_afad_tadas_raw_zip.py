@@ -68,6 +68,31 @@ def test_zip_audit_generic_filenames_orientation_identity_hashes_and_staging(tmp
     assert not (tmp_path / "data/manifests/ground_motion_manifest.csv").exists()
 
 
+def test_real_afad_degree_coordinate_and_station_code_aliases(tmp_path):
+    raw = component().decode()
+    raw = raw.replace("STATION_ID: SYN01", "STATION_CODE: 1658")
+    raw = raw.replace("EVENT_LATITUDE: 40.0", "EVENT_LATITUDE_DEGREE: 40.41806")
+    raw = raw.replace("EVENT_LONGITUDE: 30.0", "EVENT_LONGITUDE_DEGREE: 29.16083")
+    raw = raw.replace("STATION_LATITUDE: 40.1", "STATION_LATITUDE_DEGREE: 40.424085")
+    raw = raw.replace("STATION_LONGITUDE: 30.1", "STATION_LONGITUDE_DEGREE: 29.16722")
+    path = tmp_path / "real-afad-header.zip"
+    make_zip(path, {"20240223121432_1658_ap_RawAcc_E.asc": raw.encode()})
+
+    row = audit_zip(
+        path,
+        "620807",
+        "2136302",
+        "https://tadas.afad.gov.tr/waveform-detail/2136302",
+    )["components"][0]
+    assert row["eligibility_status"] == "PASS"
+    assert row["station_id"] == "1658"
+    assert row["event_latitude"] == "40.41806"
+    assert row["event_longitude"] == "29.16083"
+    assert row["station_latitude"] == "40.424085"
+    assert row["station_longitude"] == "29.16722"
+    assert row["eligibility_checks"]["required_provenance"] is True
+
+
 def test_failures_are_reported_without_repair(tmp_path):
     path = tmp_path / "bad.zip"
     make_zip(path, {
