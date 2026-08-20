@@ -29,6 +29,13 @@ DEFAULT_AUDIT_DIR = Path("results/local/afad_tadas/raw_audits")
 MIN_PGA_CM_S2 = 0.15 * STANDARD_GRAVITY_M_S2 * 100
 _NUMBER = re.compile(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?$")
 
+# Real AFAD RawAcc ASCII exports observed in TADAS use STATION_CODE and
+# STATION_*_DEGREE names. Keep the older aliases for compatibility with
+# synthetic fixtures and any legacy exports, but prefer no inferred values.
+STATION_ID_HEADERS = ("STATION_ID", "STATION_CODE")
+STATION_LATITUDE_HEADERS = ("STATION_LATITUDE", "STATION_LAT", "STATION_LATITUDE_DEGREE")
+STATION_LONGITUDE_HEADERS = ("STATION_LONGITUDE", "STATION_LON", "STATION_LONGITUDE_DEGREE")
+
 
 def parse_dyna_ascii(raw: bytes) -> tuple[dict[str, str], list[float]]:
     """Parse colon headers and the following whitespace/comma-separated series."""
@@ -116,8 +123,9 @@ def audit_component(raw: bytes, filename: str, event_id: str, waveform_detail_id
     checks["valid_utc_event_time"] = bool(event_time) and is_valid_utc_timestamp(event_time)
     license_text = headers.get("DATA_LICENSE", "")
     raw_hash = hashlib.sha256(raw).hexdigest()
+    station_id = _header(headers, *STATION_ID_HEADERS)
     checks["required_provenance"] = all((
-        _header(headers, "STATION_ID"), _header(headers, "EVENT_DATE_YYYYMMDD"),
+        station_id, _header(headers, "EVENT_DATE_YYYYMMDD"),
         _header(headers, "EVENT_LATITUDE", "EVENT_LAT"),
         _header(headers, "EVENT_LONGITUDE", "EVENT_LON"), source_reference,
     ))
@@ -129,12 +137,12 @@ def audit_component(raw: bytes, filename: str, event_id: str, waveform_detail_id
         "source": AFAD_TADAS_SOURCE, "event_id": canonical_event_id,
         "raw_header_event_id": raw_event_id, "waveform_detail_id": waveform_detail_id.strip(),
         "record_id": record_id, "stream": stream, "raw_filename": filename,
-        "station_id": _header(headers, "STATION_ID"),
+        "station_id": station_id,
         "event_date": _header(headers, "EVENT_DATE_YYYYMMDD"), "event_time_utc": event_time,
         "event_latitude": _header(headers, "EVENT_LATITUDE", "EVENT_LAT"),
         "event_longitude": _header(headers, "EVENT_LONGITUDE", "EVENT_LON"),
-        "station_latitude": _header(headers, "STATION_LATITUDE", "STATION_LAT"),
-        "station_longitude": _header(headers, "STATION_LONGITUDE", "STATION_LON"),
+        "station_latitude": _header(headers, *STATION_LATITUDE_HEADERS),
+        "station_longitude": _header(headers, *STATION_LONGITUDE_HEADERS),
         "sampling_interval_s": dt if math.isfinite(dt) else None, "ndata": ndata,
         "parsed_sample_count": len(samples),
         "usable_duration_s": duration if math.isfinite(duration) else None,
