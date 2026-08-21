@@ -10,14 +10,16 @@
 
 ## Registration status and prior work disclosure
 
-This preregistration governs the **confirmatory research phase** of SeismicShield-RL. Before preregistration, the project completed software scaffolding, deterministic synthetic fixtures, interface tests, and a small smoke benchmark using a simplified research surrogate. Those activities are exploratory software validation only. They are not confirmatory evidence and will not be used to select, accept, or reject the preregistered primary hypotheses.
+This preregistration governs the **confirmatory research phase** of SeismicShield-RL. Before preregistration, the project completed software scaffolding, deterministic synthetic fixtures, interface tests, a small smoke benchmark using a simplified research surrogate, and source-side ground-motion discovery/audit/freeze work that did not inspect confirmatory performance outcomes. Those activities are exploratory software validation and preregistration infrastructure only. They are not confirmatory evidence and will not be used to select, accept, or reject the preregistered primary hypotheses.
+
+The final pre-registration source-side amendment is v0.8.1. It preserves the pre-existing v0.8.0 salted event and record ordering while applying an explicit per-waveform license rule. The completed 63-event ESM queue contains 34 events with at least four eligible source-reported Creative Commons records. The source-side sample is therefore frozen at **34 events × 4 records = 136 records** before OSF submission. No confirmatory simulation outcome was inspected before this amendment.
 
 The following must occur **after** the public OSF registration and DOI are issued:
 
-1. freezing the confirmatory ground-motion test manifest;
+1. freezing the confirmatory ground-motion test manifest and event-to-partition identities under the preregistered rules;
 2. running the preregistered high-fidelity confirmatory benchmark;
 3. computing the preregistered primary inferential statistics;
-4. changing primary claim IDs in the evidence ledger from `blocked` to `verified`.
+4. changing primary claim IDs in the evidence ledger from `blocked` to `verified` only when the evidence contract is satisfied.
 
 ## A — Aims
 
@@ -47,9 +49,20 @@ Under equal simulation and optimization budgets, does a story-decomposed multi-a
 
 ### Ground motions
 
-The benchmark will use versioned, provenance-preserving strong-motion records from openly accessible sources, with AFAD/TADAS as the primary Türkiye-oriented source where redistribution terms allow. Raw records, metadata, preprocessing code, unit conversions, filtering decisions and checksums will be preserved or, when raw redistribution is restricted, replaced by deterministic acquisition instructions plus immutable manifests.
+The benchmark will use versioned, provenance-preserving strong-motion records from the **European Strong-Motion Database (ESM)**. Record identity, source request references, raw/source hashes, preprocessing steps, unit conversions and derived hashes are preserved in deterministic local artifacts and public lock metadata. Raw/source waveform bytes are not assumed redistributable.
 
-Ground motions will be grouped by **earthquake event** before splitting. Records from the same event may not be divided across train and confirmatory test sets. This prevents event leakage.
+For the confirmatory preregistration, a waveform is source-license eligible only when its source-reported `DATA_LICENSE` begins with `CC-BY3_0-IT` or `CC-BY4_0`. `D (network default license)` and `U (unknown license)` are excluded without reinterpretation, substitution, or network-level license inference. This rule was finalized before OSF registration and before any confirmatory outcome was inspected.
+
+The v0.8.0 salt `SeismicShield-RL-v0.8.0-OSF-2026` and the pre-existing salted event/record order are preserved. The frozen source queue contains 63 physically/component-eligible events. Events are traversed in the pre-existing salted event-hash order and retained only if their exhaustive inventory contains at least four explicit-CC records. The first 34 retained events form the v0.8.1 source-side sample; within each event, the first four explicit-CC records in the pre-existing salted record-hash order are retained. The resulting sample is **34 earthquake events and 136 records**.
+
+The preregistered partition counts are:
+
+- training: **13 events / 52 records**;
+- validation: **5 events / 20 records**;
+- pilot: **4 events / 16 records**, permanently excluded from confirmatory inference;
+- confirmatory: **12 events / 48 records**.
+
+Ground motions are grouped by **earthquake event** before splitting. Records from the same event may not be divided across train, validation, pilot, or confirmatory strata. This prevents event leakage. The actual event-to-partition identities will be frozen under the registered deterministic contract after public OSF registration and before confirmatory execution.
 
 ### Building families
 
@@ -143,7 +156,7 @@ All hyperparameter selection, reward shaping, architecture selection and stoppin
 
 ### Seeds
 
-A seed ledger will define algorithm-training seeds, structural-draw seeds, optimization initializations and resampling seeds. Primary results will aggregate across multiple independent training seeds; the exact seed count is frozen before OSF submission after a compute-feasibility pilot.
+The primary algorithm-training seed ledger is frozen at eight seeds: `1103, 2207, 3313, 4421, 5521, 6637, 7753, 8861`. Structural-draw seeds, optimization initializations and bootstrap/permutation seeds are preserved in their corresponding frozen manifests. Confirmatory test outcomes may not be used to alter the seed set.
 
 ## P — Performance measures and inference
 
@@ -212,7 +225,9 @@ Validation tolerances will be frozen before confirmatory results are viewed.
 
 ## Confirmatory sample-size/compute feasibility decision
 
-The final numbers of earthquake events, records per event, structural draws and training seeds will be fixed before OSF submission using only runtime and variance information from pilot worlds that are permanently excluded from the confirmatory test set. The preregistration will record those numbers explicitly; no placeholders may remain at submission time.
+The source-side ground-motion sample is fixed before OSF submission at **34 earthquake events, four records per event, and 136 records total**. The partition counts are fixed at **13 training, 5 validation, 4 pilot, and 12 confirmatory events**. The four pilot events are permanently excluded from confirmatory inference. The reduction from the earlier 40-event target to 34 events is solely the consequence of the explicit per-waveform license eligibility rule applied to the already-frozen 63-event salted ESM queue; it was made before registration and before confirmatory outcomes were inspected.
+
+The v0.8.0 primary compute budgets, structural families, objective definitions, analysis thresholds and eight primary algorithm seeds remain unchanged by the v0.8.1 license amendment. The post-registration manifest freeze may instantiate identities and partitions only under these registered counts and deterministic rules; it may not change the sample size or license policy based on confirmatory performance.
 
 ## Deviations
 
