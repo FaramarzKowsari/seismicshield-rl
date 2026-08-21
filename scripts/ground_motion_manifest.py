@@ -9,7 +9,7 @@ import math
 from pathlib import Path, PurePosixPath
 import re
 from typing import Iterable
-from urllib.parse import unquote, urlsplit
+from urllib.parse import urlsplit
 
 SALT = "SeismicShield-RL-v0.8.0-OSF-2026"
 AFAD_TADAS_SOURCE = "AFAD_TADAS"
@@ -258,19 +258,17 @@ def _esm_manifest_errors(row: dict[str, str]) -> list[str]:
 
     try:
         source_url = urlsplit(row.get("source_url_or_access_reference", ""))
-        decoded_path = unquote(source_url.path, errors="strict")
-        path_segments = decoded_path.split("/")
+        raw_path = source_url.path
         valid_source_url = (
             source_url.scheme == "https"
             and source_url.hostname == "esm-db.eu"
             and source_url.username is None
             and source_url.password is None
             and source_url.port is None
-            and not any(segment in {".", ".."} for segment in path_segments)
-            and path_segments[:4] == ["", "esmws", "eventdata", "1"]
-            and len(path_segments) >= 5
+            and "%" not in raw_path
+            and raw_path == "/esmws/eventdata/1/query"
         )
-    except (UnicodeDecodeError, ValueError):
+    except ValueError:
         valid_source_url = False
     if not valid_source_url:
         errors.append("ESM source_url_or_access_reference is not an Event-Data service reference")
