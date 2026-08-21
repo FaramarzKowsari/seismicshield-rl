@@ -92,6 +92,9 @@ def test_afad_tadas_identity_and_stream_contracts():
 
 
 def test_afad_duration_derivation_fails_closed():
+    assert derive_usable_duration_s("105", 10501, 0.01, 10501) == (
+        105.0, "explicit:DURATION_S",
+    )
     assert derive_usable_duration_s("", 10501, 0.01, 10501) == (
         105.0, "(NDATA - 1) * SAMPLING_INTERVAL_S",
     )

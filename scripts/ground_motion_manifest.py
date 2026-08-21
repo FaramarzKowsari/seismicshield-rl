@@ -9,6 +9,7 @@ import math
 from pathlib import Path, PurePosixPath
 import re
 from typing import Iterable
+from urllib.parse import urlsplit
 
 SALT = "SeismicShield-RL-v0.8.0-OSF-2026"
 AFAD_TADAS_SOURCE = "AFAD_TADAS"
@@ -97,7 +98,7 @@ def derive_usable_duration_s(
         duration = float(explicit_duration)
         if not math.isfinite(duration) or duration <= 0:
             raise ValueError("explicit usable duration is invalid")
-        return duration, "explicit"
+        return duration, "explicit:DURATION_S"
     count, dt = int(ndata), float(sampling_interval_s)
     if count < 2 or parsed_sample_count != count:
         raise ValueError("cannot derive duration: NDATA/sample-count contract failed")
@@ -221,16 +222,33 @@ def _esm_manifest_errors(row: dict[str, str]) -> list[str]:
         errors.append("invalid ESM parsed/header PGA evidence")
 
     derivation = row.get("raw_duration_derivation", "").strip()
-    if not derivation:
-        errors.append("blank raw_duration_derivation")
-    elif derivation == "(NDATA - 1) * SAMPLING_INTERVAL_S" and ndata >= 2:
+    if derivation == "explicit:DURATION_S":
         try:
-            expected_duration = (ndata - 1) * float(row.get("sampling_interval_s", ""))
             actual_duration = float(row.get("usable_duration_s", ""))
+            if not math.isfinite(actual_duration) or actual_duration <= 0:
+                raise ValueError
+        except ValueError:
+            errors.append("invalid ESM explicit DURATION_S evidence")
+    elif derivation == "(NDATA - 1) * SAMPLING_INTERVAL_S":
+        try:
+            parsed_count = int(row.get("parsed_sample_count", ""))
+            sampling_interval = float(row.get("sampling_interval_s", ""))
+            actual_duration = float(row.get("usable_duration_s", ""))
+            if ndata < 2 or parsed_count != ndata:
+                raise ValueError
+            if not math.isfinite(sampling_interval) or sampling_interval <= 0:
+                raise ValueError
+            expected_duration = (ndata - 1) * sampling_interval
+            if not math.isfinite(actual_duration):
+                raise ValueError
             if not math.isclose(actual_duration, expected_duration, rel_tol=1e-9, abs_tol=1e-9):
                 errors.append("ESM fallback usable_duration_s is inconsistent with NDATA and sampling interval")
         except ValueError:
             errors.append("invalid ESM duration fallback evidence")
+    elif not derivation:
+        errors.append("blank raw_duration_derivation")
+    else:
+        errors.append("unsupported ESM raw_duration_derivation")
 
     timestamp = row.get("event_time_utc", "")
     if not is_valid_utc_timestamp(timestamp):
@@ -238,7 +256,19 @@ def _esm_manifest_errors(row: dict[str, str]) -> list[str]:
     elif row.get("event_date", "").strip() != timestamp[:10]:
         errors.append("ESM event_date does not match event_time_utc date")
 
-    if "esm-db.eu/esmws/eventdata/1/" not in row.get("source_url_or_access_reference", "").lower():
+    try:
+        source_url = urlsplit(row.get("source_url_or_access_reference", ""))
+        valid_source_url = (
+            source_url.scheme == "https"
+            and source_url.hostname == "esm-db.eu"
+            and source_url.username is None
+            and source_url.password is None
+            and source_url.port is None
+            and source_url.path.startswith("/esmws/eventdata/1/")
+        )
+    except ValueError:
+        valid_source_url = False
+    if not valid_source_url:
         errors.append("ESM source_url_or_access_reference is not an Event-Data service reference")
     if row.get("raw_redistribution_allowed", "").strip().lower() != "false":
         errors.append("ESM raw redistribution must remain false without explicit license permission")
