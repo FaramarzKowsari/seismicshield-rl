@@ -25,6 +25,12 @@ selection_overrides:
   preserve_existing_salt: SeismicShield-RL-v0.8.0-OSF-2026
   event_rule: first_34_events_in_existing_hash_order_with_at_least_4_explicit_CC_records
   record_rule: first_4_explicit_CC_records_in_existing_record_hash_order
+source_side_freeze_evidence:
+  selection_sha256: c34feab1694d3e897fdccfd13e6bbf2b1185e4741eeea7722919765d136a683c
+  combined_inventory_sha256: 0c42b797ebdd015b88e6a2dc1fcdb663cf612e56fb0f70ac11d8e72c780b214a
+  staging_sha256: fb054d9c5006ba97e94f281aa99e8626137c8ce72a5ff1e49f51d44d9165eb66
+  processed_record_set_sha256: e1a1dcf0b27ac23614fcdcc27ba77666cfa30cba4bbec38eecc32d4c648b39ac
+  dedicated_tests_passed: 12
 unchanged_from_v0.8.0:
   - physical_eligibility_thresholds
   - building_families
@@ -37,3 +43,4 @@ notes:
   - The 40-event target was reduced only because the completed source-license audit found 34 events with at least four explicit-CC records in the frozen 63-event queue.
   - D (network default license) and U (unknown license) records are excluded without reinterpretation.
   - No confirmatory result was inspected before this amendment.
+  - Private normalized waveform bytes are not committed; public provenance records only hashes and contracts.
