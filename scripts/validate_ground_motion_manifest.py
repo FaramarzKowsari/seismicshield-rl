@@ -12,6 +12,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.ground_motion_manifest import (  # noqa: E402
+    ESM_SOURCE,
     PARTITIONS,
     eligibility_errors,
     read_csv,
@@ -19,8 +20,16 @@ from scripts.ground_motion_manifest import (  # noqa: E402
 )
 
 
+def _fixture_source_allowed(source: str, allow_test_fixtures: bool) -> bool:
+    return allow_test_fixtures and source.startswith("synthetic-fixture")
+
+
 def validate(
-    path: Path, digest_path: Path | None = None, *, allow_test_fixtures: bool = False
+    path: Path,
+    digest_path: Path | None = None,
+    *,
+    allow_test_fixtures: bool = False,
+    expected_source: str = ESM_SOURCE,
 ) -> list[str]:
     errors: list[str] = []
     try:
@@ -33,6 +42,9 @@ def validate(
     by_event: dict[str, list[dict[str, str]]] = defaultdict(list)
     record_ids: set[str] = set()
     for index, row in enumerate(rows, 2):
+        source = row.get("source", "").strip()
+        if expected_source and source != expected_source and not _fixture_source_allowed(source, allow_test_fixtures):
+            errors.append(f"row {index}: final manifest source must be {expected_source}, found {source!r}")
         if row["record_id"] in record_ids:
             errors.append(f"duplicate record_id {row['record_id']!r}")
         record_ids.add(row["record_id"])
@@ -41,6 +53,16 @@ def validate(
             row_errors.append("manifest row is not unconditionally eligible")
         errors.extend(f"row {index}: {message}" for message in row_errors)
         by_event[row["event_id"]].append(row)
+
+    production_sources = {
+        row.get("source", "").strip()
+        for row in rows
+        if not _fixture_source_allowed(row.get("source", "").strip(), allow_test_fixtures)
+    }
+    if expected_source and production_sources and production_sources != {expected_source}:
+        errors.append(
+            f"final manifest must be single-source {expected_source}; observed sources: {sorted(production_sources)}"
+        )
 
     if len(by_event) != 40:
         errors.append(f"expected 40 unique event IDs, found {len(by_event)}")

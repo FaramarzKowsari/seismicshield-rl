@@ -6,23 +6,26 @@ import csv
 from datetime import datetime, timezone
 import hashlib
 import math
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 from typing import Iterable
 
 SALT = "SeismicShield-RL-v0.8.0-OSF-2026"
 AFAD_TADAS_SOURCE = "AFAD_TADAS"
+ESM_SOURCE = "ESM"
 STANDARD_GRAVITY_M_S2 = 9.80665
 PGA_TOLERANCE_CM_S2 = 0.01
 PARTITIONS = (("training", 18), ("validation", 6), ("pilot", 4), ("confirmatory", 12))
+ESM_ACCELEROMETRIC_FAMILIES = frozenset({"HN", "HG", "HL"})
+ESM_HORIZONTAL_AXIS_SUFFIXES = frozenset({"E", "N", "1", "2", "X", "Y"})
 COLUMNS = (
     "source", "event_id", "raw_header_event_id", "record_id",
-    "waveform_detail_id", "stream", "raw_filename", "station_id", "component",
-    "sampling_interval_s", "usable_duration_s", "original_units", "normalized_units",
-    "ndata", "raw_duration_derivation", "pga_cm_s2", "pga_g", "event_date",
-    "event_time_utc", "latitude", "longitude", "partition",
-    "source_url_or_access_reference", "preprocessing_status", "raw_sha256",
-    "processed_sha256", "data_license", "raw_redistribution_allowed",
+    "waveform_detail_id", "stream", "raw_filename", "network_code", "station_id", "location_code",
+    "component", "sampling_interval_s", "usable_duration_s", "original_units", "normalized_units",
+    "ndata", "parsed_sample_count", "raw_duration_derivation", "pga_cm_s2", "source_header_pga_cm_s2",
+    "pga_g", "event_date", "event_time_utc", "latitude", "longitude", "partition",
+    "source_url_or_access_reference", "preprocessing_status", "source_processing_type", "source_quality_class",
+    "raw_sha256", "processed_sha256", "data_license", "data_citation", "raw_redistribution_allowed",
     "eligibility_status", "eligibility_reason",
 )
 PROVENANCE_FIELDS = (
@@ -59,6 +62,28 @@ def afad_event_identity(tadas_event_id: str | int, raw_header_event_id: str | in
         raise ValueError("blank TADAS Event Search/Event Detail identifier")
     raw = "" if raw_header_event_id is None else str(raw_header_event_id).strip()
     return canonical, raw
+
+
+def esm_record_id(source_member_basename: str) -> str:
+    """Return the frozen ESM record identity: exact source-distributed ASCII basename."""
+    text = str(source_member_basename).strip()
+    if not text:
+        raise ValueError("blank ESM source member basename")
+    normalized = text.replace("\\", "/")
+    basename = PurePosixPath(normalized).name
+    if basename != text or "/" in text or "\\" in text or basename in {".", ".."}:
+        raise ValueError("ESM raw_filename must be an exact basename without path components")
+    return basename
+
+
+def esm_horizontal_stream(stream: str) -> bool:
+    """Return whether stream is a frozen eligible ESM accelerometric horizontal channel."""
+    value = str(stream).strip().upper()
+    return (
+        len(value) == 3
+        and value[:2] in ESM_ACCELEROMETRIC_FAMILIES
+        and value[-1] in ESM_HORIZONTAL_AXIS_SUFFIXES
+    )
 
 
 def derive_usable_duration_s(
@@ -98,7 +123,7 @@ def validate_component_pga(samples_cm_s2: Iterable[float], header_pga_cm_s2: flo
 
 
 def raw_redistribution_allowed(data_license: str | None) -> bool:
-    """Allow raw bytes only for a license explicitly frozen in the allowlist."""
+    """Allow AFAD raw bytes only for a license explicitly frozen in the allowlist."""
     license_text = "" if data_license is None else str(data_license).strip()
     return license_text in AFAD_RAW_REDISTRIBUTION_LICENSE_ALLOWLIST
 
@@ -133,11 +158,100 @@ def read_csv(path: Path) -> list[dict[str, str]]:
         return [{key: (value or "").strip() for key, value in row.items()} for row in reader]
 
 
+def _esm_manifest_errors(row: dict[str, str]) -> list[str]:
+    errors: list[str] = []
+    event_id = row.get("event_id", "").strip()
+    raw_event_id = row.get("raw_header_event_id", "").strip()
+    if not event_id:
+        errors.append("blank canonical ESM event_id")
+    if not raw_event_id:
+        errors.append("blank ESM ASCII EVENT_ID")
+    elif event_id and raw_event_id != event_id:
+        errors.append("ESM event_id does not match ASCII EVENT_ID")
+
+    if row.get("waveform_detail_id", "").strip():
+        errors.append("ESM row must not contain AFAD waveform_detail_id")
+    try:
+        expected_record_id = esm_record_id(row.get("raw_filename", ""))
+        if row.get("record_id", "").strip() != expected_record_id:
+            errors.append("ESM record_id is not the exact source-distributed ASCII basename")
+    except ValueError as exc:
+        errors.append(str(exc))
+
+    stream = row.get("stream", "").strip().upper()
+    if not esm_horizontal_stream(stream):
+        errors.append("ESM stream is not an eligible HN/HG/HL horizontal channel")
+
+    for field in ("network_code", "station_id", "source_processing_type", "source_quality_class", "data_citation"):
+        if not row.get(field, "").strip():
+            errors.append(f"blank {field}")
+    quality = row.get("source_quality_class", "").strip().upper()
+    if quality and quality not in {"BEST", "GOOD", "BAD", "UNDEF"}:
+        errors.append("invalid ESM source_quality_class")
+
+    if row.get("original_units", "").strip().lower() not in {"cm/s^2", "cm/s2"}:
+        errors.append("ESM original_units must preserve authoritative cm/s^2 acceleration units")
+
+    try:
+        ndata = int(row.get("ndata", ""))
+        parsed_count = int(row.get("parsed_sample_count", ""))
+        if ndata < 2:
+            errors.append("ESM NDATA must be >= 2")
+        if parsed_count != ndata:
+            errors.append("ESM parsed_sample_count does not equal NDATA")
+    except ValueError:
+        errors.append("invalid ESM NDATA/parsed_sample_count")
+        ndata = 0
+
+    try:
+        parsed_pga = abs(float(row.get("pga_cm_s2", "")))
+        header_pga = abs(float(row.get("source_header_pga_cm_s2", "")))
+        if not math.isfinite(parsed_pga) or not math.isfinite(header_pga):
+            raise ValueError
+        difference = abs(parsed_pga - header_pga)
+        if difference > PGA_TOLERANCE_CM_S2 and not math.isclose(
+            difference, PGA_TOLERANCE_CM_S2, abs_tol=1e-12
+        ):
+            errors.append("ESM parsed PGA disagrees with source header by more than 0.01 cm/s^2")
+        expected_g = parsed_pga / (STANDARD_GRAVITY_M_S2 * 100.0)
+        actual_g = abs(float(row.get("pga_g", "")))
+        if not math.isclose(actual_g, expected_g, rel_tol=1e-9, abs_tol=1e-9):
+            errors.append("ESM pga_g is inconsistent with parsed pga_cm_s2 and standard gravity")
+    except ValueError:
+        errors.append("invalid ESM parsed/header PGA evidence")
+
+    derivation = row.get("raw_duration_derivation", "").strip()
+    if not derivation:
+        errors.append("blank raw_duration_derivation")
+    elif derivation == "(NDATA - 1) * SAMPLING_INTERVAL_S" and ndata >= 2:
+        try:
+            expected_duration = (ndata - 1) * float(row.get("sampling_interval_s", ""))
+            actual_duration = float(row.get("usable_duration_s", ""))
+            if not math.isclose(actual_duration, expected_duration, rel_tol=1e-9, abs_tol=1e-9):
+                errors.append("ESM fallback usable_duration_s is inconsistent with NDATA and sampling interval")
+        except ValueError:
+            errors.append("invalid ESM duration fallback evidence")
+
+    timestamp = row.get("event_time_utc", "")
+    if not is_valid_utc_timestamp(timestamp):
+        errors.append("ESM event_time_utc is not a valid ISO-8601 UTC timestamp")
+    elif row.get("event_date", "").strip() != timestamp[:10]:
+        errors.append("ESM event_date does not match event_time_utc date")
+
+    if "esm-db.eu/esmws/eventdata/1/" not in row.get("source_url_or_access_reference", "").lower():
+        errors.append("ESM source_url_or_access_reference is not an Event-Data service reference")
+    if row.get("raw_redistribution_allowed", "").strip().lower() != "false":
+        errors.append("ESM raw redistribution must remain false without explicit license permission")
+    return errors
+
+
 def eligibility_errors(row: dict[str, str], *, allow_test_fixtures: bool = False) -> list[str]:
     errors: list[str] = []
-    is_afad = row.get("source") == AFAD_TADAS_SOURCE
-    if (row.get("waveform_detail_id", "").strip() or row.get("stream", "").strip()) and not is_afad:
-        errors.append("AFAD/TADAS metadata requires exact canonical source AFAD_TADAS")
+    source = row.get("source", "").strip()
+    is_afad = source == AFAD_TADAS_SOURCE
+    is_esm = source == ESM_SOURCE
+    if row.get("waveform_detail_id", "").strip() and not is_afad:
+        errors.append("AFAD/TADAS waveform_detail_id requires exact canonical source AFAD_TADAS")
     if is_afad:
         for field in ("waveform_detail_id", "stream", "raw_filename", "ndata", "raw_duration_derivation", "pga_cm_s2"):
             if not row.get(field, "").strip():
@@ -154,6 +268,9 @@ def eligibility_errors(row: dict[str, str], *, allow_test_fixtures: bool = False
             errors.append("AFAD/TADAS event_time_utc is not a valid ISO-8601 UTC timestamp")
         if row.get("raw_redistribution_allowed", "").lower() != "false":
             errors.append("AFAD/TADAS raw redistribution is not explicitly licensed")
+    elif is_esm:
+        errors.extend(_esm_manifest_errors(row))
+
     for field in PROVENANCE_FIELDS:
         value = row.get(field, "").strip()
         if not value:
