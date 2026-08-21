@@ -1,0 +1,28 @@
+version: v0.8.0
+status: selected_record_identities_frozen_pre_registration
+canonical_source: ESM
+frozen_salt: SeismicShield-RL-v0.8.0-OSF-2026
+selected_events: 40
+records_per_event: 4
+selected_records: 160
+selection_method:
+  event_order: "ascending SHA-256(salt + ':event:' + source + ':' + event_id)"
+  record_order: "ascending SHA-256(salt + ':record:' + source + ':' + event_id + ':' + record_id), then record_id tie-break"
+local_selection_artifact:
+  path: results/local/esm/esm_selected_records_160.csv
+  sha256: ad2f67315fd688b2c867f46d193d03550b96f953d6899ccc4cd0e47fd04bd2ad
+selected_event_preview:
+  path: results/local/esm/esm_selected_event_preview.csv
+  sha256: e57d0e970a711503dd3cc251ce12a3dfa251614fa9c7df5028a424ecdbff7ec3
+source_inventory:
+  path: results/local/esm/esm_selected_event_record_inventory.json
+  sha256_at_selection: da87f1652f65bd985646e2218e883ef106d2edf819a2fbf10605bbdd45316e07
+scientific_state:
+  final_manifest_created: false
+  partitions_assigned: false
+  osf_registration_submitted: false
+  confirmatory_runs_allowed: false
+notes:
+  - "This lock records the deterministic real-data selection before waveform materialization or partition assignment."
+  - "The selection CSV and private inventory remain local; public hashes lock their exact bytes without redistributing waveform data."
+  - "No confirmatory seismic-performance result had been inspected when this lock was established."
