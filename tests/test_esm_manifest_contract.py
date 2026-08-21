@@ -110,6 +110,15 @@ def test_esm_contract_rejects_malformed_fallback_evidence(field: str, value: str
         "http://esm-db.eu/esmws/eventdata/1/query",
         "https://evil.esm-db.eu/esmws/eventdata/1/query",
         "https://esm-db.eu/unrelated",
+        "https://esm-db.eu/esmws/eventdata/1/./query",
+        "https://esm-db.eu/esmws/eventdata/1/../../unrelated",
+        "https://esm-db.eu/esmws/eventdata/1/../query",
+        "https://esm-db.eu/esmws/eventdata/1/%2e/query",
+        "https://esm-db.eu/esmws/eventdata/1/%2E/query",
+        "https://esm-db.eu/esmws/eventdata/1/%2e%2e/unrelated",
+        "https://esm-db.eu/esmws/eventdata/1/%2E%2E/unrelated",
+        "https://esm-db.eu/esmws/eventdata/1/.%2e/unrelated",
+        "https://esm-db.eu/esmws/eventdata/1/%2e./unrelated",
     ],
 )
 def test_esm_contract_rejects_invalid_eventdata_provenance_urls(url: str):
@@ -118,9 +127,9 @@ def test_esm_contract_rejects_invalid_eventdata_provenance_urls(url: str):
     assert any("not an Event-Data service reference" in error for error in eligibility_errors(row))
 
 
-def test_esm_contract_accepts_exact_https_eventdata_host():
+def test_esm_contract_accepts_exact_https_eventdata_service_url():
     row = valid_esm_row()
-    row["source_url_or_access_reference"] = "https://ESM-DB.EU/esmws/eventdata/1/query?eventid=TEST"
+    row["source_url_or_access_reference"] = "https://esm-db.eu/esmws/eventdata/1/query?eventid=TEST"
     assert eligibility_errors(row) == []
 
 
