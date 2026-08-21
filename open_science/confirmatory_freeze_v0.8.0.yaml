@@ -2,22 +2,34 @@ freeze:
   name: SeismicShield-RL Confirmatory Numerical Freeze
   version: v0.8.0
   status: preregistration_infrastructure_only
+  amendment_note: ground_motion_source_amended_to_esm_before_registration
 ground_motions:
-  afad_tadas_contract:
-    canonical_source: AFAD_TADAS
-    canonical_event_id: TADAS_Event_Search_or_Event_Detail_identifier
-    canonical_record_id: "{waveform_detail_id}:{stream}"
-    eligible_horizontal_streams: [HNE, HNN]
-    rejected_vertical_streams: [HNZ]
-    event_time_authority: source_event_metadata_or_raw_UTC_event_header
+  esm_contract:
+    canonical_source: ESM
+    discovery_service: ESM_Dataset_Selection
+    authoritative_record_service: ESM_Event_Data
+    catalog: ESM
+    canonical_event_id: Event_Data_ASCII_EVENT_ID_matching_Dataset_Selection_event_id
+    canonical_record_id: exact_source_distributed_ESM_ASCII_basename
+    eligible_accelerometric_families: [HN, HG, HL]
+    eligible_horizontal_axis_suffixes: [E, N, 1, 2, X, Y]
+    rejected_vertical_axis_suffixes: [Z]
+    stream_family_must_match_requested_instrument_family: true
+    data_type: ACC
+    authoritative_units: cm/s^2
+    event_time_authority: Event_Data_ASCII_EVENT_DATE_YYYYMMDD_plus_EVENT_TIME_HHMMSS
     standard_gravity_m_s2: 9.80665
+    pga_validation_source: max_abs_parsed_acceleration_samples
     pga_validation_tolerance_cm_s2: 0.01
-    unknown_license_literal: "U (unknown license)"
-    unknown_license_raw_redistribution_allowed: false
-    raw_redistribution_license_allowlist: []
-    unrecognized_or_restrictive_license_raw_redistribution_allowed: false
+    parsed_sample_count_must_equal_ndata: true
+    duration_authority: DURATION_S_if_present_else_fallback
     duration_fallback: "(NDATA - 1) * SAMPLING_INTERVAL_S"
     duration_fallback_requires: [ndata_at_least_2, finite_positive_sampling_interval, parsed_sample_count_equals_ndata]
+    provenance_required_headers: [EVENT_ID, STATION_CODE, DATA_LICENSE, DATA_CITATION]
+    source_quality_class_is_eligibility_filter: false
+    source_processing_type_is_eligibility_filter: false
+    raw_waveform_public_redistribution_default: false
+    raw_redistribution_requires_explicit_license_permission: true
   physical_events: 40
   records_per_event: 4
   total_records: 160
