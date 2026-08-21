@@ -33,7 +33,7 @@ def valid_esm_row(event_index: int = 0, record_index: int = 0) -> dict[str, str]
         "normalized_units": "m/s^2",
         "ndata": "2001",
         "parsed_sample_count": "2001",
-        "raw_duration_derivation": "explicit",
+        "raw_duration_derivation": "explicit:DURATION_S",
         "pga_cm_s2": str(parsed_pga),
         "source_header_pga_cm_s2": str(parsed_pga),
         "pga_g": str(parsed_pga / (STANDARD_GRAVITY_M_S2 * 100.0)),
@@ -64,6 +64,64 @@ def esm_rows() -> list[dict[str, str]]:
 
 def test_valid_esm_row_satisfies_active_row_contract():
     assert eligibility_errors(valid_esm_row()) == []
+
+
+@pytest.mark.parametrize("derivation", ["fallback", "explicit", "arbitrary unknown derivation"])
+def test_esm_contract_rejects_noncanonical_duration_derivations(derivation: str):
+    row = valid_esm_row()
+    row["raw_duration_derivation"] = derivation
+    assert any("unsupported ESM raw_duration_derivation" in error for error in eligibility_errors(row))
+
+
+def test_esm_contract_accepts_frozen_fallback_duration_derivation():
+    row = valid_esm_row()
+    row["raw_duration_derivation"] = "(NDATA - 1) * SAMPLING_INTERVAL_S"
+    assert eligibility_errors(row) == []
+
+
+def test_esm_contract_rejects_mismatched_fallback_duration():
+    row = valid_esm_row()
+    row["raw_duration_derivation"] = "(NDATA - 1) * SAMPLING_INTERVAL_S"
+    row["usable_duration_s"] = "20.0001"
+    assert any("fallback usable_duration_s is inconsistent" in error for error in eligibility_errors(row))
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("ndata", "1"),
+        ("ndata", "invalid"),
+        ("parsed_sample_count", "2000"),
+        ("parsed_sample_count", "invalid"),
+        ("sampling_interval_s", "nan"),
+    ],
+)
+def test_esm_contract_rejects_malformed_fallback_evidence(field: str, value: str):
+    row = valid_esm_row()
+    row["raw_duration_derivation"] = "(NDATA - 1) * SAMPLING_INTERVAL_S"
+    row[field] = value
+    assert eligibility_errors(row)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://attacker.invalid/esm-db.eu/esmws/eventdata/1/query",
+        "http://esm-db.eu/esmws/eventdata/1/query",
+        "https://evil.esm-db.eu/esmws/eventdata/1/query",
+        "https://esm-db.eu/unrelated",
+    ],
+)
+def test_esm_contract_rejects_invalid_eventdata_provenance_urls(url: str):
+    row = valid_esm_row()
+    row["source_url_or_access_reference"] = url
+    assert any("not an Event-Data service reference" in error for error in eligibility_errors(row))
+
+
+def test_esm_contract_accepts_exact_https_eventdata_host():
+    row = valid_esm_row()
+    row["source_url_or_access_reference"] = "https://ESM-DB.EU/esmws/eventdata/1/query?eventid=TEST"
+    assert eligibility_errors(row) == []
 
 
 @pytest.mark.parametrize(
