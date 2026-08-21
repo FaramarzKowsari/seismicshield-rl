@@ -17,4 +17,13 @@ This yields **34 events × 4 records = 136 records**. The preregistered partitio
 
 The confirmatory event count remains 12. Physical eligibility thresholds, structural families, algorithm seeds, optimization budgets, primary estimands, and the inferential plan are unchanged from v0.8.0.
 
+The completed local v0.8.1 freeze and materialization produced the following immutable provenance values:
+
+- selection SHA-256: `c34feab1694d3e897fdccfd13e6bbf2b1185e4741eeea7722919765d136a683c`;
+- combined 63-event inventory SHA-256: `0c42b797ebdd015b88e6a2dc1fcdb663cf612e56fb0f70ac11d8e72c780b214a`;
+- materialization staging SHA-256: `fb054d9c5006ba97e94f281aa99e8626137c8ce72a5ff1e49f51d44d9165eb66`;
+- processed record-set SHA-256: `e1a1dcf0b27ac23614fcdcc27ba77666cfa30cba4bbec38eecc32d4c648b39ac`.
+
+The dedicated v0.8.1 regression suite passed 12 tests before these values were recorded.
+
 This amendment does not authorize confirmatory execution. The confirmatory gate remains blocked until the public OSF registration persistent identifier is recorded according to the existing gate contract.
