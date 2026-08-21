@@ -1,0 +1,39 @@
+version: v0.8.1
+base_freeze: open_science/confirmatory_freeze_v0.8.0.yaml
+status: preregistration_finalization_pre_osf
+reason: explicit_per_waveform_license_filter
+timing:
+  osf_registration_submitted: false
+  confirmatory_outcomes_inspected: false
+  confirmatory_gate_remains_blocked: true
+ground_motion_overrides:
+  source: ESM
+  source_hash_queue_events: 63
+  accepted_license_prefixes: [CC-BY3_0-IT, CC-BY4_0]
+  network_default_license_D_accepted: false
+  unknown_license_U_accepted: false
+  license_inference_or_reinterpretation_permitted: false
+  selected_events: 34
+  records_per_event: 4
+  total_records: 136
+  partitions:
+    training: {events: 13, records: 52}
+    validation: {events: 5, records: 20}
+    pilot: {events: 4, records: 16, excluded_from_confirmatory_inference: true}
+    confirmatory: {events: 12, records: 48}
+selection_overrides:
+  preserve_existing_salt: SeismicShield-RL-v0.8.0-OSF-2026
+  event_rule: first_34_events_in_existing_hash_order_with_at_least_4_explicit_CC_records
+  record_rule: first_4_explicit_CC_records_in_existing_record_hash_order
+unchanged_from_v0.8.0:
+  - physical_eligibility_thresholds
+  - building_families
+  - structural_uncertainty_design
+  - algorithm_seeds
+  - optimization_budgets
+  - primary_analysis_plan
+  - confirmatory_event_count_12
+notes:
+  - The 40-event target was reduced only because the completed source-license audit found 34 events with at least four explicit-CC records in the frozen 63-event queue.
+  - D (network default license) and U (unknown license) records are excluded without reinterpretation.
+  - No confirmatory result was inspected before this amendment.
