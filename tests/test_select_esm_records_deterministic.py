@@ -3,6 +3,8 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -70,6 +72,29 @@ def test_build_selection_produces_exactly_four_per_event_and_160_total():
         assert [row["record_id"] for row in chosen] == [row["record_id"] for row in expected]
         assert [row["record_rank"] for row in chosen] == ["1", "2", "3", "4"]
         assert all(row["event_rank"] == str(rank) for row in chosen)
+
+
+def test_build_selection_emits_canonical_basename_as_raw_filename():
+    inventory = _inventory()
+    for event in inventory.values():
+        for record in event["passing_records_hash_order_preview"]:
+            record["file_name"] = f"nested/path/{record['record_id']}"
+    rows = build_selection(_selected_events(), inventory)
+    assert all(row["raw_filename"] == row["record_id"] for row in rows)
+    assert all("/" not in row["raw_filename"] and "\\" not in row["raw_filename"] for row in rows)
+
+
+def test_direct_script_help_bootstraps_repository_root():
+    repo_root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [sys.executable, "scripts/select_esm_records_deterministic.py", "--help"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Select the frozen four ESM records" in result.stdout
 
 
 def test_build_selection_fails_closed_on_incomplete_event():
