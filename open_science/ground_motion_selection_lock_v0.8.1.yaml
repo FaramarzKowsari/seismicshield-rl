@@ -1,0 +1,34 @@
+version: v0.8.1
+status: explicit_cc_license_clean_selection_frozen_pre_registration
+canonical_source: ESM
+source_queue_events: 63
+selected_events: 34
+records_per_event: 4
+selected_records: 136
+license_policy:
+  accepted_prefixes: [CC-BY3_0-IT, CC-BY4_0]
+  network_default_license_accepted: false
+  unknown_license_accepted: false
+selection_method:
+  event_order: existing ascending salted event_hash; license-ineligible events skipped
+  record_order: ascending salted record_hash then record_id; non-explicit-CC records excluded
+local_selection_artifact:
+  path: results/local/esm/esm_selected_records_136.csv
+  sha256: c34feab1694d3e897fdccfd13e6bbf2b1185e4741eeea7722919765d136a683c
+source_inventory:
+  path: results/local/esm/esm_record_inventory_63_complete.json
+  sha256_at_selection: 0c42b797ebdd015b88e6a2dc1fcdb663cf612e56fb0f70ac11d8e72c780b214a
+selected_event_preview:
+  path: results/local/esm/esm_selected_event_preview_cc34.csv
+  sha256: 1054a693a16d61131d74df31b625d7386cfe44c46a6b537d32d690bfa6e360b7
+source_event_queue:
+  path: results/local/esm/esm_eligible_event_queue.csv
+  sha256: 628e9906d68f324907b164216cd7927c766503a801e61f756274ce867826fa8b
+scientific_state:
+  partitions_assigned: false
+  osf_registration_submitted: false
+  confirmatory_runs_allowed: false
+notes:
+  - License filtering was finalized before OSF registration and before any confirmatory outcome was inspected.
+  - D (network default license) and U (unknown license) records are excluded without reinterpretation.
+  - The v0.8.0 salt and hash ordering are preserved; only the explicit-license eligibility gate is added.
