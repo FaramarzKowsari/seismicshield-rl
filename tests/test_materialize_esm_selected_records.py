@@ -11,8 +11,10 @@ import pytest
 from scripts.ground_motion_manifest import ESM_SOURCE, sha_key
 from scripts.materialize_esm_selected_records import (
     _canonical_decimal,
+    _load_selection_lock_hashes,
     _normalized_csv_bytes,
     _request_metadata,
+    _verify_locked_inputs,
     materialize_one,
 )
 
@@ -107,6 +109,24 @@ def _fixture(tmp_path: Path):
     return selection, event
 
 
+def _write_selection_lock(path: Path, selection_sha: str, inventory_sha: str) -> None:
+    path.write_text(
+        "\n".join(
+            [
+                "version: v0.8.0",
+                "local_selection_artifact:",
+                "  path: results/local/esm/esm_selected_records_160.csv",
+                f"  sha256: {selection_sha}",
+                "source_inventory:",
+                "  path: results/local/esm/esm_selected_event_record_inventory.json",
+                f"  sha256_at_selection: {inventory_sha}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_canonical_normalized_csv_is_deterministic():
     from decimal import Decimal
 
@@ -165,6 +185,49 @@ def test_materialize_one_rejects_changed_source_member(tmp_path: Path):
     selection["source_member_sha256"] = "0" * 64
     with pytest.raises(ValueError, match="inventory member SHA-256 disagrees"):
         materialize_one(selection, event, tmp_path / "processed")
+
+
+def test_frozen_selection_and_inventory_hashes_are_enforced(tmp_path: Path):
+    selection = tmp_path / "selection.csv"
+    inventory = tmp_path / "inventory.json"
+    lock = tmp_path / "selection-lock.yaml"
+    selection.write_bytes(b"frozen-selection\n")
+    inventory.write_bytes(b"frozen-inventory\n")
+    selection_sha = hashlib.sha256(selection.read_bytes()).hexdigest()
+    inventory_sha = hashlib.sha256(inventory.read_bytes()).hexdigest()
+    _write_selection_lock(lock, selection_sha, inventory_sha)
+
+    assert _load_selection_lock_hashes(lock) == (selection_sha, inventory_sha)
+    assert _verify_locked_inputs(lock, selection, inventory) == (selection_sha, inventory_sha)
+
+    selection.write_bytes(b"regenerated-selection\n")
+    with pytest.raises(ValueError, match="selected-record CSV SHA-256 disagrees"):
+        _verify_locked_inputs(lock, selection, inventory)
+
+
+def test_frozen_inventory_hash_mismatch_is_rejected(tmp_path: Path):
+    selection = tmp_path / "selection.csv"
+    inventory = tmp_path / "inventory.json"
+    lock = tmp_path / "selection-lock.yaml"
+    selection.write_bytes(b"frozen-selection\n")
+    inventory.write_bytes(b"frozen-inventory\n")
+    selection_sha = hashlib.sha256(selection.read_bytes()).hexdigest()
+    inventory_sha = hashlib.sha256(inventory.read_bytes()).hexdigest()
+    _write_selection_lock(lock, selection_sha, inventory_sha)
+
+    inventory.write_bytes(b"edited-inventory\n")
+    with pytest.raises(ValueError, match="source inventory SHA-256 disagrees"):
+        _verify_locked_inputs(lock, selection, inventory)
+
+
+def test_malformed_selection_lock_fails_closed(tmp_path: Path):
+    lock = tmp_path / "selection-lock.yaml"
+    lock.write_text(
+        "local_selection_artifact:\n  sha256: not-a-sha\nsource_inventory:\n  sha256_at_selection: also-bad\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="selection lock has missing/invalid"):
+        _load_selection_lock_hashes(lock)
 
 
 def test_direct_script_help_bootstraps_repository_root():
