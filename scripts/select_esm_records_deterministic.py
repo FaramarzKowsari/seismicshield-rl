@@ -17,9 +17,13 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import sys
 from typing import Any
 
-from scripts.ground_motion_manifest import ESM_SOURCE, SALT, sha_key
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.ground_motion_manifest import ESM_SOURCE, SALT, sha_key  # noqa: E402
 
 DEFAULT_SELECTED_EVENTS = Path("results/local/esm/esm_selected_event_preview.csv")
 DEFAULT_INVENTORY = Path("results/local/esm/esm_selected_event_record_inventory.json")
@@ -166,17 +170,17 @@ def build_selection(
     for event_rank, event_id in selected_events:
         chosen = _pick_four(event_id, inventory[event_id])
         for record_rank, record in enumerate(chosen, start=1):
-            raw_filename = str(record.get("file_name") or record.get("raw_filename") or record.get("record_id") or "").strip()
+            canonical_record_id = str(record["record_id"]).strip()
             output.append(
                 {
                     "event_rank": str(event_rank),
                     "event_id": event_id,
                     "record_rank": str(record_rank),
                     "source": ESM_SOURCE,
-                    "record_id": str(record["record_id"]),
+                    "record_id": canonical_record_id,
                     "record_hash": str(record["record_hash_preview"]),
                     "stream": str(record.get("stream", "")),
-                    "raw_filename": raw_filename,
+                    "raw_filename": canonical_record_id,
                     "network_code": str(record.get("network") or record.get("network_code") or ""),
                     "station_id": str(record.get("station_code") or record.get("station_id") or ""),
                     "location_code": str(record.get("location") or record.get("location_code") or ""),
