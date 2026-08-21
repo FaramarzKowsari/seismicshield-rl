@@ -110,6 +110,20 @@ def test_esm_contract_rejects_malformed_fallback_evidence(field: str, value: str
         "http://esm-db.eu/esmws/eventdata/1/query",
         "https://evil.esm-db.eu/esmws/eventdata/1/query",
         "https://esm-db.eu/unrelated",
+        "https://esm-db.eu/esmws/eventdata/1/./query",
+        "https://esm-db.eu/esmws/eventdata/1/../../unrelated",
+        "https://esm-db.eu/esmws/eventdata/1/../query",
+        "https://esm-db.eu/esmws/eventdata/1/%2e/query",
+        "https://esm-db.eu/esmws/eventdata/1/%2E/query",
+        "https://esm-db.eu/esmws/eventdata/1/%2e%2e/unrelated",
+        "https://esm-db.eu/esmws/eventdata/1/%2E%2E/unrelated",
+        "https://esm-db.eu/esmws/eventdata/1/.%2e/unrelated",
+        "https://esm-db.eu/esmws/eventdata/1/%2e./unrelated",
+        "https://esm-db.eu/esmws/eventdata/1/%252e%252e/unrelated",
+        "https://esm-db.eu/esmws/eventdata/1/%25252e%25252e/unrelated",
+        "https://esm-db.eu/esmws/eventdata/1/query/extra",
+        "https://esm-db.eu/esmws/eventdata/1/",
+        "https://esm-db.eu/esmws/eventdata/1/%71uery",
     ],
 )
 def test_esm_contract_rejects_invalid_eventdata_provenance_urls(url: str):
@@ -118,9 +132,17 @@ def test_esm_contract_rejects_invalid_eventdata_provenance_urls(url: str):
     assert any("not an Event-Data service reference" in error for error in eligibility_errors(row))
 
 
-def test_esm_contract_accepts_exact_https_eventdata_host():
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://esm-db.eu/esmws/eventdata/1/query",
+        "https://esm-db.eu/esmws/eventdata/1/query?eventid=TEST",
+        "https://esm-db.eu/esmws/eventdata/1/query?channel=HN%2A",
+    ],
+)
+def test_esm_contract_accepts_exact_https_eventdata_service_url(url: str):
     row = valid_esm_row()
-    row["source_url_or_access_reference"] = "https://ESM-DB.EU/esmws/eventdata/1/query?eventid=TEST"
+    row["source_url_or_access_reference"] = url
     assert eligibility_errors(row) == []
 
 

@@ -258,13 +258,15 @@ def _esm_manifest_errors(row: dict[str, str]) -> list[str]:
 
     try:
         source_url = urlsplit(row.get("source_url_or_access_reference", ""))
+        raw_path = source_url.path
         valid_source_url = (
             source_url.scheme == "https"
             and source_url.hostname == "esm-db.eu"
             and source_url.username is None
             and source_url.password is None
             and source_url.port is None
-            and source_url.path.startswith("/esmws/eventdata/1/")
+            and "%" not in raw_path
+            and raw_path == "/esmws/eventdata/1/query"
         )
     except ValueError:
         valid_source_url = False
