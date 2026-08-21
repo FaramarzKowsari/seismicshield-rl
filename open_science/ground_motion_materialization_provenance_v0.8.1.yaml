@@ -1,0 +1,34 @@
+version: v0.8.1
+status: private_materialization_completed_pre_registration
+canonical_source: ESM
+selected_events: 34
+records_per_event: 4
+selected_records: 136
+selection:
+  path: results/local/esm/esm_selected_records_136.csv
+  sha256: c34feab1694d3e897fdccfd13e6bbf2b1185e4741eeea7722919765d136a683c
+combined_inventory:
+  path: results/local/esm/esm_record_inventory_63_complete.json
+  sha256: 0c42b797ebdd015b88e6a2dc1fcdb663cf612e56fb0f70ac11d8e72c780b214a
+materialization:
+  private_normalized_record_directory: data/private/esm/processed-selected-v0.8.1
+  staging_metadata_path: results/local/esm/esm_selected_records_136_manifest_staging.csv
+  staging_sha256: fb054d9c5006ba97e94f281aa99e8626137c8ce72a5ff1e49f51d44d9165eb66
+  processed_record_set_sha256: e1a1dcf0b27ac23614fcdcc27ba77666cfa30cba4bbec38eecc32d4c648b39ac
+  audit_path: results/local/esm/esm_selected_records_136_materialization.audit.json
+license_policy:
+  accepted_prefixes: [CC-BY3_0-IT, CC-BY4_0]
+  network_default_license_accepted: false
+  unknown_license_accepted: false
+scientific_state:
+  private_source_bytes_committed_to_repository: false
+  final_manifest_created: false
+  partitions_assigned: false
+  osf_registration_submitted: false
+  confirmatory_runs_allowed: false
+verification:
+  dedicated_v0_8_1_tests_passed: 12
+notes:
+  - These hashes were produced by the local v0.8.1 finalizer and private materialization run before OSF registration.
+  - The normalized waveform bytes remain private; only provenance hashes are recorded here.
+  - No confirmatory performance result was produced or inspected by this materialization step.
