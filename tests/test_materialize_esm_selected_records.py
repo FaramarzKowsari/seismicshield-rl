@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import csv
 import hashlib
-import io
-import json
 from pathlib import Path
 import subprocess
 import sys
@@ -21,6 +18,7 @@ from scripts.materialize_esm_selected_records import (
 
 
 def _ascii_member(event_id: str = "IT-TEST-0001", station: str = "STA1") -> bytes:
+    samples = ["200.000", "-100.000", "50.000"] + ["0.000"] * 998
     header = "\n".join(
         [
             f"EVENT_ID: {event_id}",
@@ -32,17 +30,14 @@ def _ascii_member(event_id: str = "IT-TEST-0001", station: str = "STA1") -> byte
             f"STATION_CODE: {station}",
             "LOCATION: 00",
             "SAMPLING_INTERVAL_S: 0.01",
-            "NDATA: 4",
-            "DURATION_S: 0.03",
+            "NDATA: 1001",
+            "DURATION_S: 10.0",
             "UNITS: cm/s^2",
             "PGA_CM/S^2: 200.000",
             "STREAM: HNE",
             "DATA_LICENSE: D (network default license)",
-            "DATA_CITATION: Example source citation for software fixture",
-            "200.000",
-            "0.000",
-            "-100.000",
-            "50.000",
+            "DATA_CITATION: ESM source citation for validation",
+            *samples,
             "",
         ]
     )
