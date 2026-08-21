@@ -44,6 +44,7 @@ from scripts.probe_esm_eventdata_direct import parse_header  # noqa: E402
 
 DEFAULT_SELECTION = Path("results/local/esm/esm_selected_records_160.csv")
 DEFAULT_INVENTORY = Path("results/local/esm/esm_selected_event_record_inventory.json")
+DEFAULT_SELECTION_LOCK = Path("open_science/ground_motion_selection_lock_v0.8.0.yaml")
 DEFAULT_PROCESSED_DIR = Path("data/private/esm/processed-selected")
 DEFAULT_STAGING = Path("results/local/esm/esm_selected_records_manifest_staging.csv")
 DEFAULT_AUDIT = Path("results/local/esm/esm_selected_records_materialization.audit.json")
@@ -70,6 +71,70 @@ def _sha256_path(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _yaml_scalar(text: str) -> str:
+    value = text.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        value = value[1:-1]
+    return value.strip()
+
+
+def _load_selection_lock_hashes(path: Path) -> tuple[str, str]:
+    """Read only the two frozen artifact hashes needed before materialization.
+
+    A deliberately small fail-closed parser avoids introducing a YAML dependency for two scalar
+    fields. Duplicate required fields, missing fields, or malformed SHA-256 values are rejected.
+    """
+    targets = {
+        "local_selection_artifact": "sha256",
+        "source_inventory": "sha256_at_selection",
+    }
+    found: dict[tuple[str, str], str] = {}
+    section = ""
+    for line_number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if raw[:1].isspace():
+            if section not in targets or ":" not in stripped:
+                continue
+            key, value = stripped.split(":", 1)
+            key = key.strip()
+            if key != targets[section]:
+                continue
+            identity = (section, key)
+            if identity in found:
+                raise ValueError(f"duplicate {section}.{key} in selection lock at line {line_number}")
+            found[identity] = _yaml_scalar(value).lower()
+            continue
+        section = stripped[:-1].strip() if stripped.endswith(":") else ""
+
+    selection_sha = found.get(("local_selection_artifact", "sha256"), "")
+    inventory_sha = found.get(("source_inventory", "sha256_at_selection"), "")
+    if not SHA256_RE.fullmatch(selection_sha):
+        raise ValueError("selection lock has missing/invalid local_selection_artifact.sha256")
+    if not SHA256_RE.fullmatch(inventory_sha):
+        raise ValueError("selection lock has missing/invalid source_inventory.sha256_at_selection")
+    return selection_sha, inventory_sha
+
+
+def _verify_locked_inputs(selection_lock: Path, selection: Path, inventory: Path) -> tuple[str, str]:
+    """Authenticate frozen selection/inventory bytes before parsing or creating outputs."""
+    expected_selection_sha, expected_inventory_sha = _load_selection_lock_hashes(selection_lock)
+    actual_selection_sha = _sha256_path(selection)
+    actual_inventory_sha = _sha256_path(inventory)
+    if actual_selection_sha != expected_selection_sha:
+        raise ValueError(
+            "selected-record CSV SHA-256 disagrees with open-science selection lock: "
+            f"expected {expected_selection_sha}, got {actual_selection_sha}"
+        )
+    if actual_inventory_sha != expected_inventory_sha:
+        raise ValueError(
+            "source inventory SHA-256 disagrees with open-science selection lock: "
+            f"expected {expected_inventory_sha}, got {actual_inventory_sha}"
+        )
+    return actual_selection_sha, actual_inventory_sha
 
 
 def _canonical_decimal(value: Decimal) -> str:
@@ -445,11 +510,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--selection", type=Path, default=DEFAULT_SELECTION)
     parser.add_argument("--inventory", type=Path, default=DEFAULT_INVENTORY)
+    parser.add_argument("--selection-lock", type=Path, default=DEFAULT_SELECTION_LOCK)
     parser.add_argument("--processed-dir", type=Path, default=DEFAULT_PROCESSED_DIR)
     parser.add_argument("--staging-out", type=Path, default=DEFAULT_STAGING)
     parser.add_argument("--audit-out", type=Path, default=DEFAULT_AUDIT)
     args = parser.parse_args()
     try:
+        selection_input_sha, inventory_input_sha = _verify_locked_inputs(
+            args.selection_lock,
+            args.selection,
+            args.inventory,
+        )
         selections = _load_selection(args.selection)
         inventory = _load_inventory(args.inventory)
         missing = sorted({row["event_id"] for row in selections} - set(inventory))
@@ -467,16 +538,18 @@ def main() -> int:
             "selected_records": EXPECTED_RECORDS,
             "records_per_event": EXPECTED_PER_EVENT,
             "transformation": "source-distributed ESM acceleration cm/s^2 divided by exactly 100; no filtering/resampling",
+            "selection_lock": str(args.selection_lock),
             "selection_csv": str(args.selection),
-            "selection_csv_sha256": _sha256_path(args.selection),
+            "selection_csv_sha256": selection_input_sha,
             "source_inventory": str(args.inventory),
-            "source_inventory_sha256": _sha256_path(args.inventory),
+            "source_inventory_sha256": inventory_input_sha,
             "staging_csv": str(args.staging_out),
             "staging_csv_sha256": staging_sha,
             "processed_record_set_sha256": processed_set_sha,
             "processed_private_dir": args.processed_dir.as_posix(),
             "generated_at_utc": _now_utc(),
             "notes": [
+                "Frozen selection and source-inventory bytes are authenticated against the public v0.8.0 selection lock before parsing or output creation.",
                 "Every selected source ZIP/member hash is rechecked against the frozen 160-record selection.",
                 "Every source member is reparsed and NDATA/PGA/event/station identity is revalidated before materialization.",
                 "Processed waveform bytes remain private because raw/source redistribution permission is not assumed.",
