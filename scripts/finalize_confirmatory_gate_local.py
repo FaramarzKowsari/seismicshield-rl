@@ -27,7 +27,7 @@ from scripts.build_structural_world_manifest_v0_8_1 import (  # noqa: E402
     build as build_structural_manifest,
     write as write_structural_manifest,
 )
-from scripts.check_confirmatory_gate import check_gate  # noqa: E402
+from scripts.check_confirmatory_gate import check_gate, digest_matches  # noqa: E402
 from scripts.validate_ground_motion_manifest_v0_8_1 import validate as validate_ground  # noqa: E402
 from scripts.validate_structural_world_manifest_v0_8_1 import (  # noqa: E402
     validate as validate_structural,
@@ -142,7 +142,7 @@ def _update_gate(root: Path, structural_sha256: str) -> Path:
     algorithm_sha = data.get("confirmatory_algorithm_bundle_sha256")
     if not isinstance(algorithm_bundle, str) or not (root / algorithm_bundle).is_file():
         raise RuntimeError("Validated confirmatory algorithm bundle is absent.")
-    if _sha256(root / algorithm_bundle) != algorithm_sha:
+    if not isinstance(algorithm_sha, str) or not digest_matches(root, algorithm_bundle, algorithm_sha):
         raise RuntimeError("Confirmatory algorithm bundle SHA-256 no longer matches the gate.")
     if data.get("confirmatory_algorithm_bundle_validated") is not True:
         raise RuntimeError("Confirmatory algorithm bundle is not marked validated.")
