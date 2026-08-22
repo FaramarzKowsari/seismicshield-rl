@@ -1,6 +1,12 @@
 from pathlib import Path
 
-from scripts.plan_confirmatory_execution_v0_8_2 import build_plan
+import pytest
+
+from scripts.plan_confirmatory_execution_v0_8_2 import (
+    EXPECTED_ALGORITHM_SEEDS,
+    build_plan,
+    frozen_algorithm_seeds,
+)
 
 
 def test_execution_ledger_reproduces_exact_frozen_call_accounting():
@@ -29,6 +35,18 @@ def test_execution_ledger_reproduces_exact_frozen_call_accounting():
         "tier2_confirmatory_seeded": 48,
         "tier2_confirmatory_support": 3,
     }
+
+
+def test_seed_helper_accepts_only_exact_preregistered_values():
+    assert frozen_algorithm_seeds({"algorithm_seeds": EXPECTED_ALGORITHM_SEEDS}) == (
+        EXPECTED_ALGORITHM_SEEDS
+    )
+    mutated = list(EXPECTED_ALGORITHM_SEEDS)
+    mutated[0] = 1104
+    with pytest.raises(ValueError, match="exact preregistered values"):
+        frozen_algorithm_seeds({"algorithm_seeds": mutated})
+    with pytest.raises(ValueError, match="exact preregistered values"):
+        frozen_algorithm_seeds({"algorithm_seeds": EXPECTED_ALGORITHM_SEEDS[:-1]})
 
 
 def test_learned_training_is_never_split_into_independent_state_jobs():
@@ -82,6 +100,7 @@ def test_ledger_replay_is_deterministic_and_shard_ids_are_unique():
     assert first == second
     shard_ids = [shard["shard_id"] for shard in first["shards"]]
     assert len(shard_ids) == len(set(shard_ids)) == 883
+    assert first["algorithm_seeds"] == EXPECTED_ALGORITHM_SEEDS
     assert first["structural_states"] == [
         "3:nominal",
         "3:lhs-1",
