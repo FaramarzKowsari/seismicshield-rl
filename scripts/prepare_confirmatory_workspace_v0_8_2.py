@@ -14,16 +14,20 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 from typing import Any
-
-from scripts.plan_confirmatory_execution_v0_8_2 import build_plan
 
 WORKSPACE_SCHEMA = "confirmatory-workspace-v0.8.2-v1"
 SELECTION_STATUS = "PLANNED_SELECTION"
 CONFIRMATORY_STATUS = "LOCKED_CONFIRMATORY"
 PLANNER_RELATIVE = "scripts/plan_confirmatory_execution_v0_8_2.py"
 EXPECTED_PLANNER_GIT_BLOB = "87f508944b1788886a658b2e9bcc0a67e777476f"
+EXPECTED_TOTAL_SHARDS = 475
+EXPECTED_SELECTION_SHARDS = 424
+EXPECTED_CONFIRMATORY_SHARDS = 51
+EXPECTED_SCIENTIFIC_TAG = "confirmatory-v0.8.2-final"
+EXPECTED_SCIENTIFIC_COMMIT = "cecd3b6c27b5deb6cb6be7ddc478cfc407a45644"
 
 
 def _canonical_bytes(value: Any) -> bytes:
@@ -62,6 +66,63 @@ def _validate_planner_source(root: Path) -> None:
         )
 
 
+def _reviewed_plan(root: Path) -> dict[str, Any]:
+    """Execute the exact reviewed planner blob without importing working-tree planner code."""
+    _validate_planner_source(root)
+    blob = subprocess.run(
+        ["git", "cat-file", "blob", EXPECTED_PLANNER_GIT_BLOB],
+        cwd=root,
+        capture_output=True,
+        check=False,
+    )
+    if blob.returncode:
+        detail = blob.stderr.decode("utf-8", errors="replace").strip()
+        raise RuntimeError(f"cannot read reviewed planner blob from Git object database: {detail}")
+    if _git_text(root, "hash-object", "--stdin") if False else "":  # pragma: no cover
+        raise AssertionError("unreachable")
+
+    with tempfile.TemporaryDirectory(prefix="seismicshield-reviewed-planner-") as temp_name:
+        temp_dir = Path(temp_name)
+        planner = temp_dir / "plan_confirmatory_execution_v0_8_2.py"
+        output = temp_dir / "execution_ledger.json"
+        planner.write_bytes(blob.stdout)
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(planner),
+                "--root",
+                str(root),
+                "--output",
+                str(output),
+            ],
+            cwd=root,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode:
+            detail = "\n".join(
+                part.strip() for part in (result.stdout, result.stderr) if part.strip()
+            )
+            raise RuntimeError(f"reviewed execution planner failed closed:\n{detail}")
+        if not output.is_file():
+            raise RuntimeError("reviewed execution planner returned success without a ledger")
+        value = json.loads(output.read_text(encoding="utf-8"))
+    _validate_planner_source(root)
+    if not isinstance(value, dict):
+        raise RuntimeError("reviewed execution planner output is not a JSON object")
+    if value.get("authoritative_gate_pass") is not True:
+        raise RuntimeError("reviewed execution planner did not record authoritative gate PASS")
+    if value.get("scientific_source_tag") != EXPECTED_SCIENTIFIC_TAG:
+        raise RuntimeError("reviewed execution planner returned the wrong scientific source tag")
+    if value.get("scientific_source_commit") != EXPECTED_SCIENTIFIC_COMMIT:
+        raise RuntimeError("reviewed execution planner returned the wrong scientific source commit")
+    summary = value.get("summary")
+    if not isinstance(summary, dict) or int(summary.get("total_shards", -1)) != EXPECTED_TOTAL_SHARDS:
+        raise RuntimeError("reviewed execution planner returned an unexpected shard count")
+    return value
+
+
 def _atomic_write(path: Path, payload: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
@@ -84,12 +145,18 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def _expected_state(plan: dict[str, Any], ledger_sha256: str) -> dict[str, Any]:
-    shards = plan["shards"]
+    shards = plan.get("shards")
+    if not isinstance(shards, list) or len(shards) != EXPECTED_TOTAL_SHARDS:
+        raise ValueError("execution ledger does not contain the expected 475 shards")
     states: dict[str, dict[str, Any]] = {}
     selection = 0
     confirmatory = 0
     for shard in shards:
+        if not isinstance(shard, dict):
+            raise ValueError("execution ledger contains a non-object shard")
         shard_id = str(shard["shard_id"])
+        if shard_id in states:
+            raise ValueError(f"duplicate execution shard id {shard_id!r}")
         phase = str(shard["phase"])
         if phase.startswith("tier1_"):
             status = SELECTION_STATUS
@@ -107,6 +174,11 @@ def _expected_state(plan: dict[str, Any], ledger_sha256: str) -> dict[str, Any]:
             "attempts": 0,
             "result_artifact_sha256": None,
         }
+    if selection != EXPECTED_SELECTION_SHARDS or confirmatory != EXPECTED_CONFIRMATORY_SHARDS:
+        raise ValueError(
+            "execution ledger stage counts mismatch: "
+            f"selection={selection}, confirmatory={confirmatory}"
+        )
     return {
         "schema": WORKSPACE_SCHEMA,
         "ledger_sha256": ledger_sha256,
@@ -197,8 +269,6 @@ def _publish_workspace_atomically(
         _atomic_write(staging / "workspace_state.json", state_payload)
         _atomic_write(staging / "workspace.json", summary_payload)
         if workspace.exists():
-            # An empty destination carries no state; remove it before the single directory publish.
-            # If execution stops here, a later invocation sees no final workspace and can retry.
             if not workspace.is_dir() or any(workspace.iterdir()):
                 raise RuntimeError("execution workspace changed while staging preparation")
             workspace.rmdir()
@@ -212,8 +282,7 @@ def _publish_workspace_atomically(
 def prepare_workspace(root: Path, workspace: Path) -> dict[str, Any]:
     root = root.resolve()
     workspace = workspace.resolve()
-    _validate_planner_source(root)
-    plan = build_plan(root)
+    plan = _reviewed_plan(root)
     ledger_payload = _canonical_bytes(plan)
     ledger_sha = _sha256(ledger_payload)
     state = _expected_state(plan, ledger_sha)
