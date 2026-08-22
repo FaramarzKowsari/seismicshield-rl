@@ -15,23 +15,21 @@ def test_execution_ledger_reproduces_exact_frozen_call_accounting():
     root = Path(__file__).resolve().parents[1]
     plan = build_plan(root)
     summary = plan["summary"]
-    assert summary["total_shards"] == EXPECTED_SHARDS == 859
+    assert summary["total_shards"] == EXPECTED_SHARDS == 475
     assert summary["tier1_calls"] == 2_780_992
     assert summary["tier2_calls"] == 39_168
     assert summary["total_calls"] == 2_820_160
     assert summary["phase_calls"] == {
         "tier1_feature_precompute": 832,
         "tier1_train_validate_learned": 1_305_600,
-        "tier1_training_nonpolicy": 1_228_800,
-        "tier1_validation_nonpolicy": 245_760,
+        "tier1_train_validate_nonpolicy": 1_474_560,
         "tier2_confirmatory_seeded": 36_864,
         "tier2_confirmatory_support": 2_304,
     }
     assert summary["phase_shards"] == {
         "tier1_feature_precompute": 16,
         "tier1_train_validate_learned": 24,
-        "tier1_training_nonpolicy": 384,
-        "tier1_validation_nonpolicy": 384,
+        "tier1_train_validate_nonpolicy": 384,
         "tier2_confirmatory_seeded": 48,
         "tier2_confirmatory_support": 3,
     }
@@ -54,6 +52,27 @@ def test_frozen_python_env_replaces_inherited_pythonpath(monkeypatch, tmp_path: 
     env = _frozen_python_env(tmp_path)
     assert env["PYTHONPATH"] == str((tmp_path / "src").resolve())
     assert "/development/editable/src" not in env["PYTHONPATH"]
+
+
+def test_nonpolicy_training_and_candidate_validation_stay_atomic():
+    root = Path(__file__).resolve().parents[1]
+    plan = build_plan(root)
+    nonpolicy = [
+        shard for shard in plan["shards"] if shard["phase"] == "tier1_train_validate_nonpolicy"
+    ]
+    assert len(nonpolicy) == 3 * 8 * 16
+    assert {shard["calls"] for shard in nonpolicy} == {3_840}
+    assert {shard["training_calls"] for shard in nonpolicy} == {3_200}
+    assert {shard["validation_calls"] for shard in nonpolicy} == {640}
+    assert {shard["candidate_pool"] for shard in nonpolicy} == {32}
+    assert {shard["partition"] for shard in nonpolicy} == {"training+validation"}
+    assert all(shard["structural_state_id"] is not None for shard in nonpolicy)
+    assert all(
+        shard["atomic_reason"] == "candidate_archive_and_validation_selection_stay_in_memory"
+        for shard in nonpolicy
+    )
+    assert not any(shard["phase"] == "tier1_training_nonpolicy" for shard in plan["shards"])
+    assert not any(shard["phase"] == "tier1_validation_nonpolicy" for shard in plan["shards"])
 
 
 def test_learned_training_and_checkpoint_validation_stay_atomic():
