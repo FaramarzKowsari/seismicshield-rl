@@ -4,9 +4,8 @@
 The planner does not read waveform bytes, train a model, select a design, or run a structural
 simulation. It verifies the authoritative immutable gate at the exact scientific tag, verifies
 public frozen contracts/manifests, and groups the preregistered calls into atomic orchestration
-units. In particular, learned-policy training and its checkpoint validation stay in the same
-method×seed shard because the immutable implementation performs validation inside the training
-loop at the frozen checkpoints.
+units. Optimizer training and its validation selection stay in the same shard whenever the
+immutable implementation keeps the selection state only in memory.
 """
 from __future__ import annotations
 
@@ -32,7 +31,7 @@ EXPECTED_ALGORITHM_SEEDS = [1103, 2207, 3313, 4421, 5521, 6637, 7753, 8861]
 EXPECTED_TIER1_CALLS = 2_780_992
 EXPECTED_TIER2_CALLS = 39_168
 EXPECTED_STATES = 16
-EXPECTED_SHARDS = 859
+EXPECTED_SHARDS = 475
 FROZEN_GATE_RELATIVE = "open_science/confirmatory_gate_v0.8.0.yaml"
 
 
@@ -317,19 +316,27 @@ def build_plan(root: Path) -> dict[str, Any]:
             )
         )
 
+    # CandidateRunResult carries the unique-design archive in memory and validation
+    # selects directly from that archive. Keep both operations in one restartable shard
+    # rather than inventing an orchestration serializer for frozen scientific state.
     for method in nonpolicy:
         for seed in seeds:
             for state in states:
                 shards.append(
                     make_shard(
-                        phase="tier1_training_nonpolicy",
+                        phase="tier1_train_validate_nonpolicy",
                         backend="Tier1",
-                        partition="training",
+                        partition="training+validation",
                         method=method,
                         seed=seed,
                         structural_state_id=state,
-                        calls=calls_per_state,
-                        atomic_reason="one_frozen_optimizer_run_for_one_structural_state",
+                        training_calls=calls_per_state,
+                        validation_calls=nonpolicy_validation_calls,
+                        candidate_pool=int(
+                            nonpolicy_cfg["candidate_pool_per_seed_per_structural_state"]
+                        ),
+                        calls=calls_per_state + nonpolicy_validation_calls,
+                        atomic_reason="candidate_archive_and_validation_selection_stay_in_memory",
                     )
                 )
 
@@ -357,25 +364,6 @@ def build_plan(root: Path) -> dict[str, Any]:
                     atomic_reason="frozen_training_loop_performs_checkpoint_validation_inline",
                 )
             )
-
-    for method in nonpolicy:
-        for seed in seeds:
-            for state in states:
-                shards.append(
-                    make_shard(
-                        phase="tier1_validation_nonpolicy",
-                        backend="Tier1",
-                        partition="validation",
-                        method=method,
-                        seed=seed,
-                        structural_state_id=state,
-                        calls=nonpolicy_validation_calls,
-                        candidate_pool=int(
-                            nonpolicy_cfg["candidate_pool_per_seed_per_structural_state"]
-                        ),
-                        atomic_reason="select_one_design_from_exact_32_candidate_pool",
-                    )
-                )
 
     for method in stochastic:
         for seed in seeds:
