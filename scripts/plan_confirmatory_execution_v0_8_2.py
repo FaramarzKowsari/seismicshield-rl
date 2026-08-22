@@ -4,8 +4,9 @@
 The planner does not read waveform bytes, train a model, select a design, or run a structural
 simulation. It verifies the authoritative immutable gate at the exact scientific tag, verifies
 public frozen contracts/manifests, and groups the preregistered calls into atomic orchestration
-units. In particular, learned-policy training is never split by structural state because the
-frozen contract requires one shared policy budget across all 16 states.
+units. In particular, learned-policy training and its checkpoint validation stay in the same
+method×seed shard because the immutable implementation performs validation inside the training
+loop at the frozen checkpoints.
 """
 from __future__ import annotations
 
@@ -31,6 +32,7 @@ EXPECTED_ALGORITHM_SEEDS = [1103, 2207, 3313, 4421, 5521, 6637, 7753, 8861]
 EXPECTED_TIER1_CALLS = 2_780_992
 EXPECTED_TIER2_CALLS = 39_168
 EXPECTED_STATES = 16
+EXPECTED_SHARDS = 859
 FROZEN_GATE_RELATIVE = "open_science/confirmatory_gate_v0.8.0.yaml"
 
 
@@ -331,21 +333,28 @@ def build_plan(root: Path) -> dict[str, Any]:
                     )
                 )
 
-    # Learned policies MUST remain one atomic method×seed training job across all 16 states.
+    # The immutable learned implementation evaluates validation panels at every frozen
+    # checkpoint inside the training loop and returns only the selected checkpoint.
+    # Therefore training and checkpoint validation cannot be split into independently
+    # resumable jobs without changing the frozen algorithm implementation.
     for method in learned:
         for seed in seeds:
             shards.append(
                 make_shard(
-                    phase="tier1_training_learned",
+                    phase="tier1_train_validate_learned",
                     backend="Tier1",
-                    partition="training",
+                    partition="training+validation",
                     method=method,
                     seed=seed,
                     structural_state_id=None,
                     structural_states=len(states),
-                    calls=learned_budget,
-                    calls_per_state=learned_calls_per_state,
-                    atomic_reason="shared_policy_budget_across_all_16_structural_states",
+                    training_calls=learned_budget,
+                    training_calls_per_state=learned_calls_per_state,
+                    validation_calls=learned_validation_calls,
+                    checkpoints=len(learned_cfg["checkpoints_at_training_calls"]),
+                    validation_calls_per_checkpoint=int(learned_cfg["calls_per_checkpoint"]),
+                    calls=learned_budget + learned_validation_calls,
+                    atomic_reason="frozen_training_loop_performs_checkpoint_validation_inline",
                 )
             )
 
@@ -367,24 +376,6 @@ def build_plan(root: Path) -> dict[str, Any]:
                         atomic_reason="select_one_design_from_exact_32_candidate_pool",
                     )
                 )
-
-    for method in learned:
-        for seed in seeds:
-            shards.append(
-                make_shard(
-                    phase="tier1_validation_learned",
-                    backend="Tier1",
-                    partition="validation",
-                    method=method,
-                    seed=seed,
-                    structural_state_id=None,
-                    structural_states=len(states),
-                    calls=learned_validation_calls,
-                    checkpoints=len(learned_cfg["checkpoints_at_training_calls"]),
-                    calls_per_checkpoint=int(learned_cfg["calls_per_checkpoint"]),
-                    atomic_reason="earliest_tie_broken_checkpoint_selection_across_all_states",
-                )
-            )
 
     for method in stochastic:
         for seed in seeds:
@@ -434,6 +425,8 @@ def build_plan(root: Path) -> dict[str, Any]:
         raise ValueError(f"Tier-1 planned calls mismatch: {tier1_calls}")
     if tier2_calls != EXPECTED_TIER2_CALLS:
         raise ValueError(f"Tier-2 planned calls mismatch: {tier2_calls}")
+    if len(shards) != EXPECTED_SHARDS:
+        raise ValueError(f"execution shard count mismatch: expected {EXPECTED_SHARDS}, found {len(shards)}")
     if len({shard["shard_id"] for shard in shards}) != len(shards):
         raise ValueError("execution shard IDs are not unique")
 
