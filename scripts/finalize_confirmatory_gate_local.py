@@ -18,7 +18,9 @@ import sys
 import yaml
 
 if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    _bootstrap_root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(_bootstrap_root))
+    sys.path.insert(0, str(_bootstrap_root / "src"))
 
 from scripts.build_structural_world_manifest_v0_8_1 import (  # noqa: E402
     _read_ground_manifest,
@@ -198,6 +200,7 @@ def _commit_tag_and_verify(root: Path) -> str:
     ok, reasons = check_gate(root, gate_path)
     if not ok:
         _run_git(root, "tag", "-d", FINAL_SOURCE_TAG, check=False)
+        _run_git(root, "reset", "--mixed", "HEAD^", check=False)
         raise RuntimeError("Final gate did not pass after commit/tag:\n- " + "\n- ".join(reasons))
     return commit_sha
 
@@ -219,6 +222,11 @@ def _atomic_push(root: Path) -> None:
         )
 
 
+def _rollback_local_commit_and_tag(root: Path) -> None:
+    _run_git(root, "tag", "-d", FINAL_SOURCE_TAG, check=False)
+    _run_git(root, "reset", "--mixed", "HEAD^", check=False)
+
+
 def finalize(root: Path, *, publish: bool) -> dict[str, str]:
     root = root.resolve()
     _assert_only_allowed_dirty_paths(root)
@@ -230,7 +238,11 @@ def finalize(root: Path, *, publish: bool) -> dict[str, str]:
     _assert_only_allowed_dirty_paths(root)
     commit_sha = _commit_tag_and_verify(root)
     if publish:
-        _atomic_push(root)
+        try:
+            _atomic_push(root)
+        except RuntimeError:
+            _rollback_local_commit_and_tag(root)
+            raise
     return {
         "ground_manifest_sha256": EXPECTED_GROUND_MANIFEST_SHA256,
         "structural_world_manifest": str(structural.relative_to(root)),
