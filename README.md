@@ -5,30 +5,24 @@
 <h1 align="center">SeismicShield-RL</h1>
 <p align="center"><strong>Paper-grade multi-agent reinforcement learning benchmark for seismic damper co-design</strong></p>
 <p align="center">
-  <img alt="Status" src="https://img.shields.io/badge/status-v0.1%20research%20foundation-2f6f9f.svg">
+  <img alt="Status" src="https://img.shields.io/badge/status-confirmatory%20v0.8.2%20frozen-168D73.svg">
   <img alt="Python" src="https://img.shields.io/badge/python-3.11%2B-3670A0.svg">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-168D73.svg">
   <img alt="Paid AI API" src="https://img.shields.io/badge/paid%20AI%20API-not%20required-168D73.svg">
 </p>
 
-> **Scientific status — v0.1.0:** the repository contains a deterministic research surrogate, benchmark harness, reproducibility contract, interfaces for OpenSeesPy and multi-agent RL, a REST API, tests, Docker and CI. It does **not** yet make paper-level claims about seismic protection performance. Smoke-benchmark outputs are software-validation artifacts only.
+> **Scientific status — frozen confirmatory source v0.8.2:** the public protocol is registered at OSF as DOI [`10.17605/OSF.IO/64DTX`](https://doi.org/10.17605/OSF.IO/64DTX). The explicit-CC 136-record ESM manifest, structural-world manifest, numerical freeze, algorithm bundle, execution contract and analysis contract are frozen and validation-backed. The immutable scientific source is Git tag `confirmatory-v0.8.2-final`. No paper-level confirmatory performance result is available yet.
 
-> **Confirmatory status:** **CONFIRMATORY RESULTS ARE NOT YET AVAILABLE. THE
-> CONFIRMATORY GATE REMAINS BLOCKED. THE CURRENT WORK IS
-> PREREGISTRATION/FREEZE INFRASTRUCTURE ONLY.** The v0.8.0 numerical contract and
-> empty real-data manifest schema do not authorize confirmatory execution.
+> **Confirmatory status:** **THE CONFIRMATORY GATE IS OPEN AT THE IMMUTABLE v0.8.2 SOURCE TAG, BUT CONFIRMATORY STRUCTURAL-RESPONSE RESULTS HAVE NOT YET BEEN GENERATED OR INSPECTED.** The current post-freeze step is a pilot-only runtime preflight that verifies exact frozen data hashes plus Tier-1/Tier-2 runtime behavior without evaluating the confirmatory partition.
 
-The bootstrap seed is frozen in the v0.8.0 seed ledger. Final source identity will be
-anchored by Git tag `confirmatory-v0.8.0`, resolving to exactly the commit at `HEAD`;
-that tag is intentionally absent until the final freeze. No confirmatory scientific
-result has been generated.
+The algorithm seeds, bootstrap seed, manifests, objectives, validation-selection rules and inferential procedures are frozen. Scientific execution must refuse to proceed unless `scripts/check_confirmatory_gate.py` returns `PASS` at `confirmatory-v0.8.2-final`. Post-freeze orchestration utilities may transport and hash-check data, but they cannot change the scientific code or contracts resolved by that tag.
 
 
 ## Open-science commitment
 
-The project now uses an explicit preregistration-first confirmatory workflow. The existing v0.1 synthetic smoke benchmark is disclosed as prior exploratory software validation. Primary confirmatory claims are programmatically blocked until a public OSF preregistration DOI is recorded. See [`open_science/OSF_PREREGISTRATION_DRAFT.md`](open_science/OSF_PREREGISTRATION_DRAFT.md), [`SIMULATOR_STACK.md`](SIMULATOR_STACK.md) and [`BENCHMARK_SPEC.md`](BENCHMARK_SPEC.md).
+The project uses an explicit preregistration-first confirmatory workflow. The existing v0.1 synthetic smoke benchmark is disclosed as prior exploratory software validation. The public OSF registration is now fixed at DOI [`10.17605/OSF.IO/64DTX`](https://doi.org/10.17605/OSF.IO/64DTX), and confirmatory execution is permitted only from the immutable scientific tag after the programmatic gate passes. See [`open_science/confirmatory_gate_v0.8.0.yaml`](open_science/confirmatory_gate_v0.8.0.yaml), [`open_science/confirmatory_execution_v0.8.2.yaml`](open_science/confirmatory_execution_v0.8.2.yaml), [`open_science/confirmatory_analysis_v0.8.2.yaml`](open_science/confirmatory_analysis_v0.8.2.yaml), [`open_science/CONFIRMATORY_RUNTIME_RUNBOOK_v0.8.2.md`](open_science/CONFIRMATORY_RUNTIME_RUNBOOK_v0.8.2.md) and [`SIMULATOR_STACK.md`](SIMULATOR_STACK.md).
 
-Planned persistent identifiers are deliberately separated by scholarly object: OSF DOI for the preregistered protocol, Zenodo concept/version DOI for frozen software and evidence, and engrXiv DOI for the manuscript.
+Persistent identifiers are deliberately separated by scholarly object: the OSF DOI identifies the preregistered protocol; a later Zenodo concept/version DOI will identify frozen software/evidence releases; and a manuscript preprint DOI will identify the paper. The OSF DOI is not presented as a software DOI.
 
 ## Research question
 
@@ -51,17 +45,23 @@ One episode represents one retrofit design. Each story is an agent. Agents simul
 ### Task B — Adaptive semi-active control (extension)
 At each structural time step, story-level agents adjust admissible slip-force commands. This task will be added only after the passive/offline benchmark and OpenSees backend pass parity tests, so design optimization and real-time control are not conflated.
 
-## What is already implemented in v0.1.0
+## Core platform and frozen confirmatory infrastructure
 
 - deterministic N-story shear-building research surrogate
 - smooth Coulomb-style story damper model for fast algorithm development
 - MIDR, PFA and dissipated-energy metrics
 - explicit damper-count/capacity cost model
 - no-damper, uniform, drift-proportional and random-search baselines
+- scalar GA, NSGA-II, PPO, IPPO and MAPPO confirmatory execution implementations
 - one-shot single-agent Gymnasium-compatible design environment (optional dependency)
 - PettingZoo Parallel multi-agent design environment (optional dependency)
-- OpenSees backend contract with an intentionally gated validation status
-- reproducible synthetic ground-motion fixture
+- OpenSeesPy Tier-2 backend with frozen validation contract and CI evidence
+- reproducible synthetic ground-motion fixture for software validation
+- frozen explicit-CC ESM manifest with 34 events × 4 records = 136 records
+- frozen structural-world manifest and seed ledger
+- validation-safe candidate/checkpoint selection and leakage-resistant information boundary
+- immutable `confirmatory-v0.8.2-final` source tag and fail-closed gate
+- pilot-only runtime preflight and non-waveform evidence artifacts
 - paired benchmark runner with CSV/JSON artifacts and SHA-256 manifest
 - FastAPI endpoints for simulation and benchmark execution
 - Docker image
@@ -122,17 +122,17 @@ Open `http://127.0.0.1:8000/docs` for the interactive REST API.
 pip install -e ".[marl]"
 ```
 
-The environment contract uses simultaneous story actions and is therefore represented with the PettingZoo Parallel API. Training implementations enter the repository only after they pass deterministic environment tests and equal-budget benchmark checks.
+The environment contract uses simultaneous story actions and is therefore represented with the PettingZoo Parallel API. The frozen v0.8.2 confirmatory implementations are subject to the registered equal-budget, seed, validation-selection and information-boundary contracts; changes after the immutable tag cannot silently become part of the confirmatory analysis.
 
 ### Optional OpenSeesPy backend
 
-OpenSeesPy is intentionally optional. The current official OpenSeesPy release requires Python 3.12 for the newest wheels. Install the optional backend in a Python 3.12 environment:
+OpenSeesPy is intentionally optional for ordinary development. The current frozen Tier-2 validation/runtime path uses Python 3.12. Install the optional backend in a Python 3.12 environment:
 
 ```bash
 pip install -e ".[opensees]"
 ```
 
-`src/seismicshield_rl/physics/opensees_backend.py` is a **validation gate**, not a source of claims yet. v0.2 will implement and freeze parity tests between the research surrogate and equivalent OpenSees models before OpenSees results are used in experiments.
+`src/seismicshield_rl/physics/opensees_backend.py` is the Tier-2 structural backend used by the frozen confirmatory contract after its validation gate passes. The pilot runtime preflight checks availability and convergence before any confirmatory response run. This validation does not certify a real building or convert benchmark outputs into engineering approval.
 
 ## Evidence policy
 
@@ -154,13 +154,13 @@ README figures and the public demonstrator can summarize frozen evidence, but th
 2. uniform allocation
 3. drift-proportional heuristic
 4. random search
-5. NSGA-II / evolutionary multi-objective baseline
-6. single-agent PPO
-7. IPPO with parameter sharing
-8. MAPPO / centralized critic
-9. robust or risk-sensitive MARL candidate
+5. scalar GA
+6. NSGA-II / evolutionary multi-objective baseline
+7. single-agent PPO
+8. IPPO with parameter sharing
+9. MAPPO / centralized critic
 
-The ladder is intentionally incremental: a learned method is not considered useful merely because its training return rises. It must outperform appropriately budgeted baselines on frozen held-out records and survive ablation and uncertainty tests.
+For the frozen confirmatory experiment, algorithm identities, budgets, seeds and selection rules are fixed by the registered contracts. A learned method is not considered useful merely because its training return rises; it must be judged on the prespecified held-out/confirmatory comparisons and inferential analysis.
 
 ## Primary metrics
 
@@ -171,11 +171,11 @@ The ladder is intentionally incremental: a learned method is not considered usef
 - solver/non-convergence rate
 - Pareto hypervolume for multi-objective experiments
 - out-of-distribution degradation
-- tail-risk metric (CVaR) in robust experiments
+- prespecified event-level effect sizes, intervals and multiplicity-adjusted tests
 
 ## Scope and safety
 
-This repository is a research and reproducibility platform. It does not certify a building, prescribe retrofit work, predict an earthquake, replace a structural engineer, or provide code-compliance approval. The v0.1 surrogate is deliberately simplified and synthetic. Any real-building conclusion requires validated nonlinear OpenSees models, authoritative records, calibration, engineering review and an explicit code/standards context.
+This repository is a research and reproducibility platform. It does not certify a building, prescribe retrofit work, predict an earthquake, replace a structural engineer, or provide code-compliance approval. Any real-building conclusion requires validated nonlinear structural models, authoritative records, calibration, engineering review and an explicit code/standards context. Passing software, backend or pilot-runtime gates is evidence of reproducibility/infrastructure readiness, not proof of field performance.
 
 ## Author
 
@@ -183,15 +183,15 @@ This repository is a research and reproducibility platform. It does not certify 
 
 - ORCID: https://orcid.org/0000-0003-1692-0453
 - GitHub: https://github.com/FaramarzKowsari
-- Project site (after Pages deployment): `https://faramarzkowsari.github.io/seismicshield-rl/`
+- Project site: `https://faramarzkowsari.github.io/seismicshield-rl/`
 
 ## Citation
 
-The project is not DOI-frozen yet. Use `CITATION.cff` for repository metadata. A Zenodo release DOI and an OSF registration should be created only after the confirmatory benchmark contract is frozen.
+The confirmatory protocol is publicly preregistered at OSF DOI [`10.17605/OSF.IO/64DTX`](https://doi.org/10.17605/OSF.IO/64DTX), and the immutable scientific source is `confirmatory-v0.8.2-final`. A Zenodo software/evidence DOI has not yet been asserted in this README. Until a software release DOI is minted, use `CITATION.cff` for repository authorship metadata and cite the OSF DOI specifically as the preregistered protocol rather than as the software DOI.
 
 ## License
 
-Project code is MIT licensed. Optional third-party structural engines and datasets retain their own licenses and terms. In particular, OpenSeesPy has separate terms for commercial redistribution; consult its official documentation before packaging it into a commercial application or hosted service.
+Project code is MIT licensed. Optional third-party structural engines and datasets retain their own licenses and terms. In particular, OpenSeesPy has separate terms for commercial redistribution; consult its official documentation before packaging it into a commercial application or hosted service. ESM record metadata and access references are preserved with source/license provenance; waveform redistribution follows the source terms and is not performed by repository artifacts.
 
 ## Research design documents
 
