@@ -1,6 +1,6 @@
 version: v0.8.0
-osf_registration_status: pending
-osf_registration_persistent_id: null
+osf_registration_status: public
+osf_registration_persistent_id: https://doi.org/10.17605/OSF.IO/64DTX
 ground_motion_manifest: data/manifests/ground_motion_manifest.csv
 ground_motion_manifest_sha256: null
 structural_world_manifest: null
