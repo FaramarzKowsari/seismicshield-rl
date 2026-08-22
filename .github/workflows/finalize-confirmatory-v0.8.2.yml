@@ -1,0 +1,60 @@
+name: Finalize Confirmatory v0.8.2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/finalize-confirmatory-v0.8.2.yml"
+      - "scripts/finalize_confirmatory_gate_v0_8_2_local.py"
+      - "scripts/check_confirmatory_gate.py"
+      - "open_science/confirmatory_gate_v0.8.0.yaml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: finalize-confirmatory-v0.8.2
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    if: github.repository == 'FaramarzKowsari/seismicshield-rl'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout synchronized main with tags
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install gate dependencies
+        run: python -m pip install -e .
+
+      - name: Configure finalization identity
+        run: |
+          git config user.name "SeismicShield-RL Confirmatory Finalizer"
+          git config user.email "105053743+FaramarzKowsari@users.noreply.github.com"
+
+      - name: Finalize immutable v0.8.2 gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git rev-parse --verify refs/tags/confirmatory-v0.8.2-final >/dev/null 2>&1; then
+            echo "confirmatory-v0.8.2-final already exists; validating current gate only."
+            python scripts/check_confirmatory_gate.py
+            exit 0
+          fi
+          python scripts/finalize_confirmatory_gate_v0_8_2_local.py --publish
+
+      - name: Verify published tag and gate
+        run: |
+          git fetch origin main --tags
+          test "$(git rev-parse HEAD)" = "$(git rev-parse refs/tags/confirmatory-v0.8.2-final^{commit})"
+          python scripts/check_confirmatory_gate.py
