@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 from typing import Any
 
@@ -20,6 +21,8 @@ from scripts.plan_confirmatory_execution_v0_8_2 import build_plan
 WORKSPACE_SCHEMA = "confirmatory-workspace-v0.8.2-v1"
 SELECTION_STATUS = "PLANNED_SELECTION"
 CONFIRMATORY_STATUS = "LOCKED_CONFIRMATORY"
+PLANNER_RELATIVE = "scripts/plan_confirmatory_execution_v0_8_2.py"
+EXPECTED_PLANNER_GIT_BLOB = "87f508944b1788886a658b2e9bcc0a67e777476f"
 
 
 def _canonical_bytes(value: Any) -> bytes:
@@ -28,6 +31,34 @@ def _canonical_bytes(value: Any) -> bytes:
 
 def _sha256(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+def _git_text(root: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", *args], cwd=root, text=True, capture_output=True, check=False
+    )
+    if result.returncode:
+        detail = result.stderr.strip() or result.stdout.strip() or "git command failed"
+        raise RuntimeError(detail)
+    return result.stdout.strip()
+
+
+def _validate_planner_source(root: Path) -> None:
+    try:
+        committed = _git_text(root, "rev-parse", f"HEAD:{PLANNER_RELATIVE}")
+        working = _git_text(root, "hash-object", PLANNER_RELATIVE)
+    except RuntimeError as exc:
+        raise RuntimeError(f"cannot authenticate reviewed execution planner: {exc}") from exc
+    if committed != EXPECTED_PLANNER_GIT_BLOB:
+        raise RuntimeError(
+            "committed execution planner differs from the reviewed frozen planner blob: "
+            f"expected {EXPECTED_PLANNER_GIT_BLOB}, found {committed}"
+        )
+    if working != EXPECTED_PLANNER_GIT_BLOB:
+        raise RuntimeError(
+            "working-tree execution planner differs from the reviewed frozen planner blob: "
+            f"expected {EXPECTED_PLANNER_GIT_BLOB}, found {working}"
+        )
 
 
 def _atomic_write(path: Path, payload: bytes) -> None:
@@ -78,6 +109,7 @@ def _expected_state(plan: dict[str, Any], ledger_sha256: str) -> dict[str, Any]:
     return {
         "schema": WORKSPACE_SCHEMA,
         "ledger_sha256": ledger_sha256,
+        "execution_planner_git_blob": EXPECTED_PLANNER_GIT_BLOB,
         "scientific_source_tag": plan["scientific_source_tag"],
         "scientific_source_commit": plan["scientific_source_commit"],
         "selection_shards": selection,
@@ -94,6 +126,7 @@ def _workspace_summary(plan: dict[str, Any], ledger_sha256: str, state: dict[str
         "schema": WORKSPACE_SCHEMA,
         "status": "PREPARED_SELECTION_ONLY",
         "ledger_sha256": ledger_sha256,
+        "execution_planner_git_blob": EXPECTED_PLANNER_GIT_BLOB,
         "scientific_source_tag": plan["scientific_source_tag"],
         "scientific_source_commit": plan["scientific_source_commit"],
         "authoritative_gate_pass": bool(plan["authoritative_gate_pass"]),
@@ -113,6 +146,7 @@ def _workspace_summary(plan: dict[str, Any], ledger_sha256: str, state: dict[str
 def prepare_workspace(root: Path, workspace: Path) -> dict[str, Any]:
     root = root.resolve()
     workspace = workspace.resolve()
+    _validate_planner_source(root)
     plan = build_plan(root)
     ledger_payload = _canonical_bytes(plan)
     ledger_sha = _sha256(ledger_payload)
@@ -169,6 +203,7 @@ def main() -> int:
     summary = prepare_workspace(args.root, args.workspace)
     print("Confirmatory workspace: PREPARED_SELECTION_ONLY")
     print(f"Ledger SHA-256: {summary['ledger_sha256']}")
+    print(f"Planner Git blob: {summary['execution_planner_git_blob']}")
     print(f"Selection shards: {summary['selection_shards']}")
     print(f"Locked confirmatory shards: {summary['confirmatory_shards']}")
     print("Confirmatory hydration allowed: false")
