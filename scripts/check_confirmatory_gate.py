@@ -1,4 +1,4 @@
-"""Fail-closed gate for confirmatory execution (expected BLOCKED before OSF registration)."""
+"""Fail-closed gate for the public OSF-registered confirmatory execution contract."""
 
 from __future__ import annotations
 
@@ -13,8 +13,14 @@ import yaml
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.validate_ground_motion_manifest import validate  # noqa: E402
+from scripts.validate_ground_motion_manifest_v0_8_1 import validate  # noqa: E402
 
+EXPECTED_OSF_PERSISTENT_IDS = {
+    "64dtx",
+    "10.17605/OSF.IO/64DTX",
+    "https://doi.org/10.17605/OSF.IO/64DTX",
+    "https://osf.io/64dtx/",
+}
 EXPECTED_SEED_LEDGER = {
     "algorithm_seeds": [1103, 2207, 3313, 4421, 5521, 6637, 7753, 8861],
     "structural_latin_hypercube_seed": 24681357,
@@ -100,8 +106,8 @@ def check_gate(root: Path, gate_path: Path) -> tuple[bool, list[str]]:
     if data.get("osf_registration_status") != "public":
         reasons.append("OSF registration status is not public.")
     persistent_id = data.get("osf_registration_persistent_id")
-    if not isinstance(persistent_id, str) or not persistent_id.strip():
-        reasons.append("A public OSF registration identifier/DOI or persistent ID is absent.")
+    if not isinstance(persistent_id, str) or persistent_id.strip() not in EXPECTED_OSF_PERSISTENT_IDS:
+        reasons.append("Public OSF registration identifier does not match preregistration 64dtx / DOI 10.17605/OSF.IO/64DTX.")
 
     manifest = data.get("ground_motion_manifest")
     if not isinstance(manifest, str) or not (root / manifest).is_file():
