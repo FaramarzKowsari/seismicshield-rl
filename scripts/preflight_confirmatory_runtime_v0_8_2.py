@@ -102,10 +102,9 @@ def main() -> int:
     args = parser.parse_args()
     try:
         ground_rows, private_index = _verify_private_set(root, args.private_dir)
-        pilot_records = sorted(
-            (row for row in ground_rows if row["partition"] == "pilot"),
-            key=lambda row: (row["event_rank"], row["record_rank"]),
-        )
+        # Preserve the already-frozen manifest order; the public manifest deliberately
+        # contains no mutable event-rank/record-rank columns.
+        pilot_records = [row for row in ground_rows if row["partition"] == "pilot"]
         if len(pilot_records) != 16:
             raise RuntimeError(f"pilot partition must contain 16 records, found {len(pilot_records)}")
         # Runtime-only fixture: one frozen pilot waveform; smallest and largest nominal buildings.
