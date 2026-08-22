@@ -3,18 +3,35 @@ import numpy as np
 from seismicshield_rl.config import BuildingConfig
 from .base import DamperDesign, GroundMotion, SimulationResult
 
+
 class ShearBuildingSimulator:
     """Fast nonlinear research surrogate.
 
     The damper model is a smooth Coulomb-like force law
     F = F_slip * tanh(v_rel / v_eps). It is useful for algorithm development,
     not a substitute for a validated friction-device model in OpenSees.
+
+    ``damper_capacity_scale`` implements the already-frozen structural-world
+    uncertainty dimension and mirrors the Tier-2 OpenSees backend. The default
+    remains 1.0 for backwards-compatible software fixtures.
     """
 
-    def __init__(self, building: BuildingConfig, *, velocity_eps_mps: float = 0.004, max_substep_s: float = 0.0025):
+    def __init__(
+        self,
+        building: BuildingConfig,
+        *,
+        velocity_eps_mps: float = 0.004,
+        max_substep_s: float = 0.0025,
+        damper_capacity_scale: float = 1.0,
+    ):
         self.building = building
         self.velocity_eps_mps = float(velocity_eps_mps)
         self.max_substep_s = float(max_substep_s)
+        self.damper_capacity_scale = float(damper_capacity_scale)
+        if self.velocity_eps_mps <= 0 or self.max_substep_s <= 0:
+            raise ValueError("velocity_eps_mps and max_substep_s must be positive")
+        if self.damper_capacity_scale <= 0:
+            raise ValueError("damper_capacity_scale must be positive")
         self.M = np.diag(building.masses_kg)
         self.Minv = np.diag(1.0 / building.masses_kg)
         self.B = self._incidence(building.n_stories)
@@ -65,7 +82,7 @@ class ShearBuildingSimulator:
         state = np.zeros(2*n, dtype=float)
         x_hist = np.zeros((t.size, n)); v_hist = np.zeros_like(x_hist)
         ar_hist = np.zeros_like(x_hist); f_hist = np.zeros_like(x_hist)
-        cap = design.total_story_capacity_n.astype(float)
+        cap = design.total_story_capacity_n.astype(float) * self.damper_capacity_scale
 
         # deterministic fixed-step RK4 with interpolation of ground acceleration
         for i in range(t.size):
@@ -108,5 +125,5 @@ class ShearBuildingSimulator:
             time_s=t.copy(), displacement_m=x_hist, velocity_mps=v_hist,
             relative_accel_mps2=ar_hist, absolute_accel_mps2=abs_acc,
             story_drift_ratio=drift, damper_force_n=f_hist, metrics=metrics,
-            converged=bool(finite), backend="shear-surrogate-v0.1",
+            converged=bool(finite), backend="shear-surrogate-v0.8.2",
         )
