@@ -155,6 +155,26 @@ def _fsync_directory(path: Path) -> None:
         os.close(fd)
 
 
+def _durable_mkdir_chain(path: Path) -> None:
+    """Create missing directories and durably persist every new ancestor entry."""
+    path = path.resolve()
+    missing: list[Path] = []
+    cursor = path
+    while not cursor.exists():
+        missing.append(cursor)
+        if cursor.parent == cursor:
+            raise RuntimeError(f"cannot find an existing ancestor for {path}")
+        cursor = cursor.parent
+    if not cursor.is_dir():
+        raise RuntimeError(f"workspace parent ancestor is not a directory: {cursor}")
+    for directory in reversed(missing):
+        directory.mkdir(exist_ok=True)
+        if not directory.is_dir():
+            raise RuntimeError(f"workspace parent path is not a directory: {directory}")
+        # Persist the newly created name in its parent before descending further.
+        _fsync_directory(directory.parent)
+
+
 def _read_json(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -277,8 +297,10 @@ def _publish_workspace_atomically(
     summary_payload: bytes,
 ) -> None:
     parent = workspace.parent
-    parent.mkdir(parents=True, exist_ok=True)
+    _durable_mkdir_chain(parent)
     staging = Path(tempfile.mkdtemp(prefix=f".{workspace.name}.staging-", dir=parent))
+    # Persist the newly created staging entry before writing its contents.
+    _fsync_directory(parent)
     published = False
     try:
         _atomic_write(staging / "execution_ledger.json", ledger_payload)
@@ -290,6 +312,7 @@ def _publish_workspace_atomically(
             if not workspace.is_dir() or any(workspace.iterdir()):
                 raise RuntimeError("execution workspace changed while staging preparation")
             workspace.rmdir()
+            _fsync_directory(parent)
         os.replace(staging, workspace)
         # Persist the rename itself before reporting success.
         _fsync_directory(parent)
@@ -297,6 +320,7 @@ def _publish_workspace_atomically(
     finally:
         if not published and staging.exists():
             shutil.rmtree(staging, ignore_errors=True)
+            _fsync_directory(parent)
 
 
 def prepare_workspace(root: Path, workspace: Path) -> dict[str, Any]:
