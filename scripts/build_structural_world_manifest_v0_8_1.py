@@ -137,7 +137,7 @@ def main() -> int:
         contract = load_contract(args.contract)
         rows = build(_read_ground_manifest(args.ground_manifest), contract)
         digest = write(rows, args.output)
-    except (OSError, KeyError, TypeError, ValueError, yaml.YAMLError if False else ValueError) as exc:
+    except (OSError, KeyError, TypeError, ValueError) as exc:
         parser.error(str(exc))
     print(f"Wrote structural-world manifest: {args.output}")
     print(f"Rows: {len(rows)}")
