@@ -67,8 +67,17 @@ def _validate_planner_source(root: Path) -> None:
         )
 
 
+def _isolated_python_env() -> dict[str, str]:
+    """Remove ambient Python import controls before executing authenticated planner bytes."""
+    env = os.environ.copy()
+    for key in ("PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP", "PYTHONUSERBASE"):
+        env.pop(key, None)
+    env["PYTHONNOUSERSITE"] = "1"
+    return env
+
+
 def _reviewed_plan(root: Path) -> dict[str, Any]:
-    """Execute exact reviewed planner bytes from Git, never imported working-tree code."""
+    """Execute exact reviewed planner bytes from Git in isolated Python mode."""
     _validate_planner_source(root)
     blob = subprocess.run(
         ["git", "cat-file", "blob", EXPECTED_PLANNER_GIT_BLOB],
@@ -88,6 +97,7 @@ def _reviewed_plan(root: Path) -> dict[str, Any]:
         result = subprocess.run(
             [
                 sys.executable,
+                "-I",
                 str(planner),
                 "--root",
                 str(root),
@@ -95,6 +105,7 @@ def _reviewed_plan(root: Path) -> dict[str, Any]:
                 str(output),
             ],
             cwd=root,
+            env=_isolated_python_env(),
             text=True,
             capture_output=True,
             check=False,
@@ -144,8 +155,6 @@ def _fsync_directory(path: Path) -> None:
     try:
         fd = os.open(path, flags)
     except OSError:
-        # Windows does not provide the POSIX directory-fsync durability primitive.
-        # The confirmatory runtime is validated on POSIX; keep CLI inspection portable.
         if os.name == "nt":  # pragma: no cover - Windows compatibility only
             return
         raise
@@ -171,7 +180,6 @@ def _durable_mkdir_chain(path: Path) -> None:
         directory.mkdir(exist_ok=True)
         if not directory.is_dir():
             raise RuntimeError(f"workspace parent path is not a directory: {directory}")
-        # Persist the newly created name in its parent before descending further.
         _fsync_directory(directory.parent)
 
 
@@ -299,14 +307,12 @@ def _publish_workspace_atomically(
     parent = workspace.parent
     _durable_mkdir_chain(parent)
     staging = Path(tempfile.mkdtemp(prefix=f".{workspace.name}.staging-", dir=parent))
-    # Persist the newly created staging entry before writing its contents.
     _fsync_directory(parent)
     published = False
     try:
         _atomic_write(staging / "execution_ledger.json", ledger_payload)
         _atomic_write(staging / "workspace_state.json", state_payload)
         _atomic_write(staging / "workspace.json", summary_payload)
-        # File contents are fsynced by _atomic_write; now make the staged names durable.
         _fsync_directory(staging)
         if workspace.exists():
             if not workspace.is_dir() or any(workspace.iterdir()):
@@ -314,7 +320,6 @@ def _publish_workspace_atomically(
             workspace.rmdir()
             _fsync_directory(parent)
         os.replace(staging, workspace)
-        # Persist the rename itself before reporting success.
         _fsync_directory(parent)
         published = True
     finally:
@@ -336,22 +341,29 @@ def prepare_workspace(root: Path, workspace: Path) -> dict[str, Any]:
 
     existing = _verify_existing_workspace(workspace, ledger_payload, state, summary)
     if existing is not None:
+        # Recovery path: a prior run may have completed os.replace but failed while
+        # fsyncing the parent. Re-sync the final name before reporting success.
+        _fsync_directory(workspace.parent)
         return existing
     _publish_workspace_atomically(workspace, ledger_payload, state_payload, summary_payload)
     return summary
 
 
+def _resolve_workspace(root: Path, requested: Path | None) -> Path:
+    if requested is not None:
+        return requested.resolve()
+    return (root / "results/local/confirmatory_v0.8.2/execution_workspace").resolve()
+
+
 def main() -> int:
-    root = Path(__file__).resolve().parents[1]
+    script_root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=root)
-    parser.add_argument(
-        "--workspace",
-        type=Path,
-        default=root / "results/local/confirmatory_v0.8.2/execution_workspace",
-    )
+    parser.add_argument("--root", type=Path, default=script_root)
+    parser.add_argument("--workspace", type=Path, default=None)
     args = parser.parse_args()
-    summary = prepare_workspace(args.root, args.workspace)
+    root = args.root.resolve()
+    workspace = _resolve_workspace(root, args.workspace)
+    summary = prepare_workspace(root, workspace)
     print("Confirmatory workspace: PREPARED_SELECTION_ONLY")
     print(f"Ledger SHA-256: {summary['ledger_sha256']}")
     print(f"Planner Git blob: {summary['execution_planner_git_blob']}")
