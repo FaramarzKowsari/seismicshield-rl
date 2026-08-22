@@ -12,15 +12,19 @@ from scripts.check_confirmatory_gate import (
 )
 
 
-def test_confirmatory_gate_remains_blocked_after_public_registration_until_other_prerequisites_are_met():
+def test_finalized_gate_is_complete_but_new_development_head_fails_closed_until_retagged():
     root = Path(__file__).resolve().parents[1]
     ok, reasons = check_gate(root, root / "open_science/confirmatory_gate_v0.8.0.yaml")
+    # The committed gate itself is complete and enabled. A development/PR HEAD after
+    # confirmatory-v0.8.1-final must nevertheless fail closed until a new immutable
+    # execution tag is created on that exact source commit.
     assert not ok
     assert not any("OSF registration status is not public" in reason for reason in reasons)
     assert not any("identifier does not match preregistration" in reason for reason in reasons)
     assert not any("Frozen numerical config SHA-256" in reason for reason in reasons)
     assert not any("Confirmatory algorithm bundle SHA-256" in reason for reason in reasons)
-    assert any("confirmatory_runs_allowed is false" in reason for reason in reasons)
+    assert not any("confirmatory_runs_allowed is false" in reason for reason in reasons)
+    assert any("does not equal HEAD" in reason for reason in reasons)
 
 
 def _mutated_ledger(tmp_path: Path, mutation) -> Path:
