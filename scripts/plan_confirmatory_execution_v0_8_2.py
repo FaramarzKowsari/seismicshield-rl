@@ -2,10 +2,10 @@
 """Build a compact, outcome-free execution-shard ledger from frozen v0.8.2 contracts.
 
 The planner does not read waveform bytes, train a model, select a design, or run a structural
-simulation. It only verifies public frozen contracts/manifests and groups the preregistered calls
-into atomic orchestration units. In particular, learned-policy training is never split by
-structural state because the frozen contract requires one shared policy budget across all 16
-states.
+simulation. It verifies the authoritative immutable gate at the exact scientific tag, verifies
+public frozen contracts/manifests, and groups the preregistered calls into atomic orchestration
+units. In particular, learned-policy training is never split by structural state because the
+frozen contract requires one shared policy budget across all 16 states.
 """
 from __future__ import annotations
 
@@ -15,17 +15,22 @@ import csv
 import hashlib
 import json
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
 from typing import Any
 
 import yaml
 
 EXPECTED_SCIENTIFIC_TAG = "confirmatory-v0.8.2-final"
+EXPECTED_SCIENTIFIC_COMMIT = "cecd3b6c27b5deb6cb6be7ddc478cfc407a45644"
 EXPECTED_EXECUTION_SHA256 = "4be2acca57915ff6954a82dfb03bc5adc647bf1e9594fd01042c7be2af87dd50"
 EXPECTED_STRUCTURAL_MANIFEST_SHA256 = "c4fa4d4ee203bbdb5475bd55140fe2c24246db3254a0f099b7535d4f23a8248f"
 EXPECTED_ALGORITHM_SEEDS = [1103, 2207, 3313, 4421, 5521, 6637, 7753, 8861]
 EXPECTED_TIER1_CALLS = 2_780_992
 EXPECTED_TIER2_CALLS = 39_168
 EXPECTED_STATES = 16
+FROZEN_GATE_RELATIVE = "open_science/confirmatory_gate_v0.8.0.yaml"
 
 
 def sha256_path(path: Path) -> str:
@@ -41,6 +46,94 @@ def load_yaml(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError(f"YAML must be a mapping: {path}")
     return data
+
+
+def _git_text(root: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", *args], cwd=root, text=True, capture_output=True, check=False
+    )
+    if result.returncode:
+        detail = result.stderr.strip() or result.stdout.strip() or "git command failed"
+        raise ValueError(detail)
+    return result.stdout.strip()
+
+
+def validate_immutable_scientific_gate(root: Path) -> str:
+    """Run the frozen gate checker inside a detached worktree of the exact source tag."""
+    try:
+        resolved = _git_text(
+            root, "rev-parse", "--verify", f"refs/tags/{EXPECTED_SCIENTIFIC_TAG}^{{commit}}"
+        )
+    except ValueError as exc:
+        raise ValueError(
+            f"required immutable source tag {EXPECTED_SCIENTIFIC_TAG!r} cannot be resolved: {exc}"
+        ) from exc
+    if resolved != EXPECTED_SCIENTIFIC_COMMIT:
+        raise ValueError(
+            f"immutable source tag moved: expected {EXPECTED_SCIENTIFIC_COMMIT}, found {resolved}"
+        )
+
+    frozen_gate = subprocess.run(
+        ["git", "show", f"refs/tags/{EXPECTED_SCIENTIFIC_TAG}:{FROZEN_GATE_RELATIVE}"],
+        cwd=root,
+        capture_output=True,
+        check=False,
+    )
+    if frozen_gate.returncode:
+        raise ValueError("cannot read the gate file from the immutable scientific tag")
+    current_gate = root / FROZEN_GATE_RELATIVE
+    if not current_gate.is_file() or current_gate.read_bytes() != frozen_gate.stdout:
+        raise ValueError(
+            "current orchestration checkout does not contain the exact gate bytes frozen at "
+            f"{EXPECTED_SCIENTIFIC_TAG}"
+        )
+
+    with tempfile.TemporaryDirectory(prefix="seismicshield-gate-") as temp_name:
+        worktree = Path(temp_name)
+        added = subprocess.run(
+            [
+                "git",
+                "worktree",
+                "add",
+                "--detach",
+                "--force",
+                str(worktree),
+                EXPECTED_SCIENTIFIC_TAG,
+            ],
+            cwd=root,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if added.returncode:
+            detail = added.stderr.strip() or added.stdout.strip()
+            raise ValueError(f"cannot create immutable gate validation worktree: {detail}")
+        try:
+            if _git_text(worktree, "rev-parse", "HEAD") != EXPECTED_SCIENTIFIC_COMMIT:
+                raise ValueError("immutable gate validation worktree resolved to the wrong commit")
+            gate_check = subprocess.run(
+                [sys.executable, "scripts/check_confirmatory_gate.py"],
+                cwd=worktree,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if gate_check.returncode:
+                output = "\n".join(
+                    part.strip() for part in (gate_check.stdout, gate_check.stderr) if part.strip()
+                )
+                raise ValueError(f"authoritative frozen confirmatory gate is not PASS:\n{output}")
+            if "Confirmatory gate: PASS" not in gate_check.stdout:
+                raise ValueError("frozen gate checker returned success without an explicit PASS marker")
+        finally:
+            subprocess.run(
+                ["git", "worktree", "remove", "--force", str(worktree)],
+                cwd=root,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+    return resolved
 
 
 def frozen_algorithm_seeds(seed_doc: dict[str, Any]) -> list[int]:
@@ -99,17 +192,12 @@ def make_shard(**fields: Any) -> dict[str, Any]:
 
 
 def build_plan(root: Path) -> dict[str, Any]:
+    scientific_commit = validate_immutable_scientific_gate(root)
     contract_path = root / "open_science/confirmatory_execution_v0.8.2.yaml"
     if sha256_path(contract_path) != EXPECTED_EXECUTION_SHA256:
         raise ValueError("confirmatory execution contract SHA-256 mismatch")
     contract = load_yaml(contract_path)
-    gate = load_yaml(root / "open_science/confirmatory_gate_v0.8.0.yaml")
     seeds_doc = load_yaml(root / "open_science/seed_ledger_v0.8.0.yaml")
-
-    if gate.get("source_git_tag") != EXPECTED_SCIENTIFIC_TAG:
-        raise ValueError("gate source tag is not confirmatory-v0.8.2-final")
-    if gate.get("confirmatory_runs_allowed") is not True:
-        raise ValueError("confirmatory gate does not permit frozen execution")
     seeds = frozen_algorithm_seeds(seeds_doc)
 
     partitions = contract.get("partitions") or {}
@@ -178,7 +266,6 @@ def build_plan(root: Path) -> dict[str, Any]:
 
     shards: list[dict[str, Any]] = []
 
-    # Shared, training-only undamped descriptors: one complete 52-record aggregate per state.
     for state in states:
         shards.append(
             make_shard(
@@ -193,7 +280,6 @@ def build_plan(root: Path) -> dict[str, Any]:
             )
         )
 
-    # Nonpolicy optimizers are independent by state under the frozen 3,200-call allocation.
     for method in nonpolicy:
         for seed in seeds:
             for state in states:
@@ -319,6 +405,8 @@ def build_plan(root: Path) -> dict[str, Any]:
     return {
         "schema": "confirmatory-execution-shards-v1",
         "scientific_source_tag": EXPECTED_SCIENTIFIC_TAG,
+        "scientific_source_commit": scientific_commit,
+        "authoritative_gate_pass": True,
         "execution_contract_sha256": EXPECTED_EXECUTION_SHA256,
         "structural_world_manifest_sha256": EXPECTED_STRUCTURAL_MANIFEST_SHA256,
         "contains_waveform_bytes": False,
