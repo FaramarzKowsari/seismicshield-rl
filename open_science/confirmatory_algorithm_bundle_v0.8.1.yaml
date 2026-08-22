@@ -1,0 +1,123 @@
+version: v0.8.1
+status: post_registration_pre_confirmatory_algorithm_freeze
+osf_registration: https://doi.org/10.17605/OSF.IO/64DTX
+frozen_before_confirmatory_outcome_inspection: true
+implementation: src/seismicshield_rl/algorithms/confirmatory.py
+validator: scripts/validate_confirmatory_algorithms.py
+
+scientific_boundary:
+  task: offline_passive_damper_co_design
+  confirmatory_data_permitted_for_training: false
+  confirmatory_data_permitted_for_model_selection: false
+  confirmatory_data_permitted_for_hyperparameter_tuning: false
+  model_selection_partition: validation
+  final_confirmatory_execution_requires_gate_pass: true
+  adaptive_hyperparameter_changes_after_confirmatory_inspection: false
+
+action_space:
+  representation: per_story_discrete_pair
+  per_story:
+    damper_count: integer_0_to_Nmax
+    slip_force: index_into_frozen_engineering_grid
+  zero_count_slip_force_semantics: ignored_by_physics
+  invalid_action_handling: fail_closed_no_silent_projection
+
+objective:
+  reported_vector: [normalized_cost, MIDR_ratio, PFA_ratio]
+  scalar_training_weights: [0.20, 0.45, 0.35]
+  failed_simulation_scalar_penalty: 10.0
+  pareto_hypervolume_reference_point: [1.05, 5.00, 5.00]
+  primary_output_is_unscalarized: true
+
+budget:
+  completed_design_evaluations_per_stochastic_method_per_seed: 51200
+  simulator_call_is_budget_unit: true
+  failed_simulation_consumes_budget: true
+  replay_or_optimizer_update_without_simulator_call_consumes_budget: false
+
+seeds: [1103, 2207, 3313, 4421, 5521, 6637, 7753, 8861]
+
+methods:
+  random_search:
+    family: black_box_baseline
+    stochastic: true
+    sampling: independent_uniform_discrete
+  nsga2:
+    family: evolutionary_multiobjective
+    stochastic: true
+    population_size: 256
+    tournament_size: 2
+    crossover_probability: 0.90
+    mutation_probability_per_gene: inverse_number_of_genes
+    crossover: uniform_discrete
+    mutation: uniform_resample_different_value
+    survival: nondominated_sorting_plus_crowding_distance
+  ppo:
+    family: learned_single_agent_joint_design
+    stochastic: true
+    actor_context: local_story_features_plus_global_summary
+    probability_ratio: joint_design_log_probability
+    critic: centralized_global_summary
+    hidden_units: [128, 128]
+    learning_rate: 0.0003
+    batch_design_evaluations: 256
+    update_epochs: 4
+    clip_epsilon: 0.20
+    value_loss_coefficient: 0.50
+    entropy_coefficient: 0.01
+    max_grad_norm: 0.50
+  ippo:
+    family: learned_independent_agents_parameter_shared
+    stochastic: true
+    actor_context: local_story_features
+    probability_ratio: per_story_action_log_probability
+    critic: parameter_shared_local
+    hidden_units: [128, 128]
+    learning_rate: 0.0003
+    batch_design_evaluations: 256
+    update_epochs: 4
+    clip_epsilon: 0.20
+    value_loss_coefficient: 0.50
+    entropy_coefficient: 0.01
+    max_grad_norm: 0.50
+  mappo:
+    family: learned_ctde_parameter_shared
+    stochastic: true
+    actor_context: local_story_features
+    probability_ratio: per_story_action_log_probability
+    critic: centralized_global_summary
+    hidden_units: [128, 128]
+    learning_rate: 0.0003
+    batch_design_evaluations: 256
+    update_epochs: 4
+    clip_epsilon: 0.20
+    value_loss_coefficient: 0.50
+    entropy_coefficient: 0.01
+    max_grad_norm: 0.50
+
+reproducibility:
+  numpy_rng: PCG64_via_default_rng
+  torch_seeded: true
+  deterministic_torch_algorithms_requested: true
+  cpu_reference_validation: true
+  checkpoint_selection: best_validation_scalar_objective_with_unscalarized_vector_retained
+  all_evaluations_recorded: true
+
+validation:
+  public_synthetic_oracle_only: true
+  smoke_budget_per_method: 64
+  required_checks:
+    - exact_budget_accounting
+    - action_bounds
+    - finite_objectives
+    - deterministic_seed_replay
+    - nsga2_archive_nonempty
+    - ppo_executes
+    - ippo_executes
+    - mappo_executes
+  confirmatory_waveform_used: false
+
+notes:
+  - This freeze specifies optimizer mechanics and learning hyperparameters after OSF registration but before confirmatory outcome inspection.
+  - The learned methods operate on one-step offline co-design trajectories; optimizer updates do not themselves consume simulator budget.
+  - Hyperparameters are not claims of optimality. They are fixed to prevent outcome-driven tuning on the confirmatory partition.
