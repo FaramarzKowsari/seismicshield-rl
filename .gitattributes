@@ -1,0 +1,4 @@
+# Freeze artifacts use byte-level SHA-256 checks. Do not rewrite line endings.
+open_science/*.yaml -text
+data/manifests/*.csv -text
+data/manifests/*.sha256 -text

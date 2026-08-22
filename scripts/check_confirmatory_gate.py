@@ -38,6 +38,37 @@ def _is_sha256(value: object) -> bool:
     )
 
 
+def _git_blob_sha256(root: Path, relative: str) -> str | None:
+    """Return SHA-256 of the exact bytes stored at HEAD for a tracked path.
+
+    Git may present CRLF bytes in a Windows working tree even when the immutable blob is LF.
+    Integrity checks therefore accept the frozen Git blob digest for tracked contracts while
+    still using exact working-tree bytes for generated/untracked manifests.
+    """
+    relative = relative.replace("\\", "/")
+    result = subprocess.run(
+        ["git", "show", f"HEAD:{relative}"],
+        cwd=root,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode:
+        return None
+    return hashlib.sha256(result.stdout).hexdigest()
+
+
+def digest_matches(root: Path, relative: str, expected: str) -> bool:
+    """Match either exact working-tree bytes or the canonical tracked Git blob bytes."""
+    path = root / relative
+    if not path.is_file() or not _is_sha256(expected):
+        return False
+    working = hashlib.sha256(path.read_bytes()).hexdigest()
+    if working == expected.lower():
+        return True
+    tracked = _git_blob_sha256(root, relative)
+    return tracked == expected.lower()
+
+
 def _digest_ok(root: Path, relative: object, expected: object, label: str, reasons: list[str]) -> None:
     if not isinstance(relative, str) or not relative:
         reasons.append(f"{label} path is not recorded.")
@@ -46,8 +77,7 @@ def _digest_ok(root: Path, relative: object, expected: object, label: str, reaso
     if not path.is_file():
         reasons.append(f"{label} does not exist: {relative}.")
         return
-    actual = hashlib.sha256(path.read_bytes()).hexdigest()
-    if not isinstance(expected, str) or expected.lower() != actual:
+    if not isinstance(expected, str) or not digest_matches(root, relative, expected):
         reasons.append(f"{label} SHA-256 is absent or does not match.")
 
 
