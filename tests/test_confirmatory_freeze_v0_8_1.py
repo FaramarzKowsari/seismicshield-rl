@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import yaml
+
 
 AMENDMENT = Path("open_science/confirmatory_freeze_v0.8.1_amendment.yaml")
 LICENSE_NOTE = Path("open_science/ground_motion_license_amendment_v0.8.1.md")
@@ -31,16 +33,16 @@ def test_license_amendment_precedes_osf_and_confirmatory_outcomes():
     assert "U (unknown license)" in text
 
 
-def test_public_osf_registration_and_v0_8_2_refinalization_gate_are_recorded():
-    text = GATE.read_text(encoding="utf-8")
-    assert "version: v0.8.2" in text
-    assert "osf_registration_status: public" in text
-    assert "osf_registration_persistent_id: https://doi.org/10.17605/OSF.IO/64DTX" in text
-    # The v0.8.1 immutable tag remains the provenance parent until the dedicated
-    # v0.8.2 local finalizer creates confirmatory-v0.8.2-final on the exact gate commit.
-    assert "source_git_tag: confirmatory-v0.8.1-final" in text
-    assert "ground_motion_manifest_sha256:" in text
-    assert "structural_world_manifest_sha256:" in text
-    assert "confirmatory_execution_validated: true" in text
-    assert "confirmatory_analysis_validated: true" in text
-    assert "confirmatory_runs_allowed: false" in text
+def test_public_osf_registration_and_v0_8_2_gate_state_are_recorded():
+    data = yaml.safe_load(GATE.read_text(encoding="utf-8"))
+    assert data["version"] == "v0.8.2"
+    assert data["osf_registration_status"] == "public"
+    assert data["osf_registration_persistent_id"] == "https://doi.org/10.17605/OSF.IO/64DTX"
+    assert data["ground_motion_manifest_sha256"]
+    assert data["structural_world_manifest_sha256"]
+    assert data["confirmatory_execution_validated"] is True
+    assert data["confirmatory_analysis_validated"] is True
+    assert (data["source_git_tag"], data["confirmatory_runs_allowed"]) in {
+        ("confirmatory-v0.8.1-final", False),
+        ("confirmatory-v0.8.2-final", True),
+    }
