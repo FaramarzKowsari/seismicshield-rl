@@ -10,26 +10,66 @@ from scripts.check_confirmatory_gate import (
     validate_seed_ledger,
     validate_source_tag,
 )
+from scripts.finalize_confirmatory_gate_v0_8_2_local import (
+    EXPECTED_ANALYSIS_EVIDENCE_SHA256,
+    EXPECTED_ANALYSIS_SHA256,
+    EXPECTED_EXECUTION_EVIDENCE_SHA256,
+    EXPECTED_EXECUTION_SHA256,
+    EXPECTED_GATE_VERSION,
+    EXPECTED_VALIDATION_ARTIFACT_SHA256,
+    EXPECTED_VALIDATION_RUN,
+    PARENT_SOURCE_TAG,
+)
 
 
-def test_finalized_gate_is_complete_but_new_development_head_fails_closed_until_retagged():
+def test_v0_8_2_gate_is_complete_but_intentionally_disabled_until_retagged():
     root = Path(__file__).resolve().parents[1]
     ok, reasons = check_gate(root, root / "open_science/confirmatory_gate_v0.8.0.yaml")
-    # The committed gate itself is complete and enabled. A development/PR HEAD after
-    # confirmatory-v0.8.1-final must nevertheless fail closed until a new immutable
-    # execution tag is created on that exact source commit. GitHub PR checkouts may
-    # omit tags entirely, so assert the semantic source-tag blocker rather than one
-    # brittle error string.
+    # The v0.8.2 execution and analysis contracts are frozen and validated, but this
+    # development/finalization source state must stay fail-closed until an immutable
+    # v0.8.2 tag is created on the exact final gate commit.
     assert not ok
+    assert "confirmatory_runs_allowed is false." in reasons
     assert not any("OSF registration status is not public" in reason for reason in reasons)
     assert not any("identifier does not match preregistration" in reason for reason in reasons)
     assert not any("Frozen numerical config SHA-256" in reason for reason in reasons)
     assert not any("Confirmatory algorithm bundle SHA-256" in reason for reason in reasons)
-    assert not any("confirmatory_runs_allowed is false" in reason for reason in reasons)
+    assert not any("Confirmatory execution v0.8.2 contract SHA-256" in reason for reason in reasons)
+    assert not any("Confirmatory analysis v0.8.2 contract SHA-256" in reason for reason in reasons)
     assert any(
         "does not equal HEAD" in reason
         or ("Required source Git tag" in reason and "does not exist" in reason)
         for reason in reasons
+    )
+
+
+def test_v0_8_2_gate_records_exact_public_validation_evidence():
+    root = Path(__file__).resolve().parents[1]
+    data = yaml.safe_load(
+        (root / "open_science/confirmatory_gate_v0.8.0.yaml").read_text(encoding="utf-8")
+    )
+    assert data["version"] == EXPECTED_GATE_VERSION
+    assert data["source_git_tag"] == PARENT_SOURCE_TAG
+    assert data["confirmatory_runs_allowed"] is False
+    assert data["confirmatory_execution_contract_sha256"] == EXPECTED_EXECUTION_SHA256
+    assert data["confirmatory_analysis_contract_sha256"] == EXPECTED_ANALYSIS_SHA256
+    assert data["confirmatory_execution_validation_workflow_run"] == EXPECTED_VALIDATION_RUN
+    assert data["confirmatory_analysis_validation_workflow_run"] == EXPECTED_VALIDATION_RUN
+    assert (
+        data["confirmatory_execution_validation_evidence_sha256"]
+        == EXPECTED_EXECUTION_EVIDENCE_SHA256
+    )
+    assert (
+        data["confirmatory_analysis_validation_evidence_sha256"]
+        == EXPECTED_ANALYSIS_EVIDENCE_SHA256
+    )
+    assert (
+        data["confirmatory_execution_validation_artifact_sha256"]
+        == EXPECTED_VALIDATION_ARTIFACT_SHA256
+    )
+    assert (
+        data["confirmatory_analysis_validation_artifact_sha256"]
+        == EXPECTED_VALIDATION_ARTIFACT_SHA256
     )
 
 
