@@ -1,0 +1,61 @@
+{
+  "artifact": {
+    "archive_sha256": "feeef92411b549be372d4d1323cfd0daf4b6f53e76267c39c7f396b3061f0445",
+    "artifact_id": 9481812514,
+    "hydration_audit_sha256": "a55fdd5eb9acbe47ba49036e19b9ccc629c0c57a28cf5639773112eec20095fe",
+    "name": "confirmatory-runtime-preflight-v0.8.2",
+    "preflight_json_sha256": "d9cbc99a05dc11526c4d82080ce7da58274c28b4b1f3494302bdcfa817403a12"
+  },
+  "hydration": {
+    "confirmatory_response_metrics_emitted": false,
+    "confirmatory_response_simulations_run": false,
+    "existing_verified_files_reused": 0,
+    "manifest_sha256": "0f8056d5b7a3dc0af3a80539a409f2c946b8495e96ba91d540a5d1011e3fc64b",
+    "partition_counts": {
+      "confirmatory": 48,
+      "pilot": 16,
+      "training": 52,
+      "validation": 20
+    },
+    "raw_drift_acceptance_rule": "accepted only after frozen identity/header checks and exact processed_sha256 reproduction",
+    "raw_source_byte_drift_count": 136,
+    "records_verified": 136,
+    "status": "PASS",
+    "unique_access_requests": 102,
+    "waveform_artifacts_permitted_for_upload": false
+  },
+  "immutable_scientific_source_commit": "cecd3b6c27b5deb6cb6be7ddc478cfc407a45644",
+  "immutable_scientific_source_tag": "confirmatory-v0.8.2-final",
+  "interpretation": {
+    "confirmatory_outcome_inspected": false,
+    "paper_level_seismic_performance_claim": false,
+    "scope": "runtime/integrity readiness only",
+    "waveform_bytes_committed_or_uploaded": false
+  },
+  "pilot_runtime_preflight": {
+    "confirmatory_record_read": false,
+    "numpy": "2.5.2",
+    "pilot_record_count_read": 1,
+    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+    "private_frozen_records_verified": 136,
+    "python": "3.12.14 (main, Aug 13 2026, 02:47:42) [GCC 13.3.0]",
+    "scientific_response_metrics_emitted": false,
+    "status": "PASS",
+    "tier1_converged": 4,
+    "tier1_fixture_calls": 4,
+    "tier1_mean_wall_clock_s": 1.3290438017500037,
+    "tier1_projected_sequential_hours": 1026.6833834212073,
+    "tier2_available": true,
+    "tier2_converged": 4,
+    "tier2_error": null,
+    "tier2_fixture_calls": 4,
+    "tier2_mean_wall_clock_s": 1.989169777249998,
+    "tier2_projected_sequential_hours": 21.64216717647998
+  },
+  "recorded_at_utc": "2026-08-22T20:32:51.306Z",
+  "schema": "confirmatory-runtime-preflight-evidence-v0.8.2",
+  "source_main_commit": "37940cbf877c755e33436b8534f4a37450e0bae2",
+  "status": "PASS",
+  "workflow_run_id": 32596818999,
+  "workflow_run_url": "https://github.com/FaramarzKowsari/seismicshield-rl/actions/runs/32596818999"
+}
