@@ -132,10 +132,32 @@ def test_workspace_publication_fsyncs_staging_and_parent(tmp_path: Path, monkeyp
     monkeypatch.setattr(workspace_module, "_fsync_directory", record_fsync)
     prepare_workspace(root, workspace)
 
-    assert len(observed) == 2
-    assert observed[0].parent == tmp_path.resolve()
-    assert observed[0].name.startswith(".workspace.staging-")
-    assert observed[1] == tmp_path.resolve()
+    assert any(
+        path.parent == tmp_path.resolve() and path.name.startswith(".workspace.staging-")
+        for path in observed
+    )
+    assert observed[-1] == tmp_path.resolve()
+
+
+def test_fresh_workspace_parent_chain_is_persisted_level_by_level(tmp_path: Path, monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    workspace = tmp_path / "new-local" / "confirmatory-v0.8.2" / "workspace"
+    observed: list[Path] = []
+    original = workspace_module._fsync_directory
+
+    def record_fsync(path: Path) -> None:
+        observed.append(path.resolve())
+        original(path)
+
+    monkeypatch.setattr(workspace_module, "_fsync_directory", record_fsync)
+    prepare_workspace(root, workspace)
+
+    # Creating new-local is persisted by fsync(tmp_path), then creating
+    # confirmatory-v0.8.2 is persisted by fsync(new-local).
+    assert tmp_path.resolve() in observed
+    assert (tmp_path / "new-local").resolve() in observed
+    assert workspace.is_dir()
+    assert observed[-1] == workspace.parent.resolve()
 
 
 def test_preparer_is_directly_executable_in_script_mode():
