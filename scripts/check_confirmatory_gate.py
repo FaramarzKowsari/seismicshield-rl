@@ -104,6 +104,15 @@ def validate_source_tag(root: Path, tag: object) -> tuple[str | None, str | None
     return sha, None
 
 
+def _require_validation_evidence(data: dict, prefix: str, label: str, reasons: list[str]) -> None:
+    workflow = data.get(f"{prefix}_validation_workflow_run")
+    evidence_sha = data.get(f"{prefix}_validation_evidence_sha256")
+    if not isinstance(workflow, str) or not workflow.startswith("https://github.com/"):
+        reasons.append(f"{label} validation workflow run is not recorded.")
+    if not _is_sha256(evidence_sha):
+        reasons.append(f"{label} validation evidence SHA-256 is not recorded.")
+
+
 def check_gate(root: Path, gate_path: Path) -> tuple[bool, list[str]]:
     try:
         data = yaml.safe_load(gate_path.read_text(encoding="utf-8"))
@@ -175,6 +184,10 @@ def check_gate(root: Path, gate_path: Path) -> tuple[bool, list[str]]:
     )
     if data.get("confirmatory_algorithm_bundle_validated") is not True:
         reasons.append("Confirmatory algorithm bundle is not validated/frozen.")
+    else:
+        _require_validation_evidence(
+            data, "confirmatory_algorithm_bundle", "Confirmatory algorithm bundle", reasons
+        )
 
     _, source_error = validate_source_tag(root, data.get("source_git_tag"))
     if source_error:
@@ -183,12 +196,7 @@ def check_gate(root: Path, gate_path: Path) -> tuple[bool, list[str]]:
     if data.get("tier_2_backend_validated") is not True:
         reasons.append("Tier-2 backend is not validated.")
     else:
-        workflow = data.get("tier_2_validation_workflow_run")
-        evidence_sha = data.get("tier_2_validation_evidence_sha256")
-        if not isinstance(workflow, str) or not workflow.startswith("https://github.com/"):
-            reasons.append("Tier-2 validation workflow run is not recorded.")
-        if not _is_sha256(evidence_sha):
-            reasons.append("Tier-2 validation evidence SHA-256 is not recorded.")
+        _require_validation_evidence(data, "tier_2", "Tier-2", reasons)
 
     if data.get("confirmatory_runs_allowed") is not True:
         reasons.append("confirmatory_runs_allowed is false.")
