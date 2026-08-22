@@ -15,7 +15,7 @@ confirmatory_algorithm_bundle_sha256: null
 confirmatory_algorithm_bundle_validated: false
 source_git_tag: confirmatory-v0.8.0
 tier_2_validation_contract: open_science/tier2_validation_contract_v0.8.1.yaml
-tier_2_validation_workflow_run: null
-tier_2_validation_evidence_sha256: null
-tier_2_backend_validated: false
+tier_2_validation_workflow_run: https://github.com/FaramarzKowsari/seismicshield-rl/actions/runs/32576903451
+tier_2_validation_evidence_sha256: c36464bef8fdc338a767aa9c3591c017725ec7c8e97d8bb2c67239de13e8446e
+tier_2_backend_validated: true
 confirmatory_runs_allowed: false
