@@ -4,6 +4,7 @@ import pytest
 
 from scripts.plan_confirmatory_execution_v0_8_2 import (
     EXPECTED_ALGORITHM_SEEDS,
+    _frozen_python_env,
     build_plan,
     frozen_algorithm_seeds,
 )
@@ -47,6 +48,13 @@ def test_seed_helper_accepts_only_exact_preregistered_values():
         frozen_algorithm_seeds({"algorithm_seeds": mutated})
     with pytest.raises(ValueError, match="exact preregistered values"):
         frozen_algorithm_seeds({"algorithm_seeds": EXPECTED_ALGORITHM_SEEDS[:-1]})
+
+
+def test_frozen_python_env_replaces_inherited_pythonpath(monkeypatch, tmp_path: Path):
+    monkeypatch.setenv("PYTHONPATH", "/development/editable/src")
+    env = _frozen_python_env(tmp_path)
+    assert env["PYTHONPATH"] == str((tmp_path / "src").resolve())
+    assert "/development/editable/src" not in env["PYTHONPATH"]
 
 
 def test_learned_training_is_never_split_into_independent_state_jobs():
