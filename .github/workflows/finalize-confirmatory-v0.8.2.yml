@@ -40,8 +40,8 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install gate dependencies
-        run: python -m pip install -e .
+      - name: Install validation dependencies
+        run: python -m pip install -e ".[dev]"
 
       - name: Validate finalizer and gate regression contract
         run: |
