@@ -8,6 +8,7 @@ import pytest
 from seismicshield_rl.algorithms.confirmatory import DesignContext, DesignSpace, ObjectiveRecord
 from seismicshield_rl.algorithms.execution_v0_8_2 import (
     CandidateRunResult,
+    _design_key,
     run_scalar_ga_candidates,
     select_candidate_on_validation,
     train_validation_selected_policy,
@@ -182,33 +183,122 @@ def test_scalar_ga_consumes_exact_budget_and_returns_valid_population():
     second = run_scalar_ga_candidates(space, _synthetic_oracle, budget=64, seed=3313, population_size=16)
     assert first.evaluations == 64
     assert len(first.designs) == 16
+    assert first.archive_designs is not None
+    assert first.archive_records is not None
+    assert len({_design_key(design) for design in first.archive_designs}) == len(first.archive_designs)
     assert np.array_equal(first.designs[0].counts, second.designs[0].counts)
     assert np.array_equal(first.designs[0].slip_force_n, second.designs[0].slip_force_n)
 
 
+def test_design_key_ignores_slip_force_for_zero_count_stories():
+    left = DamperDesign(
+        np.asarray([0, 1, 0], dtype=int),
+        np.asarray([0.0, 50_000.0, 350_000.0], dtype=float),
+    )
+    right = DamperDesign(
+        np.asarray([0, 1, 0], dtype=int),
+        np.asarray([350_000.0, 50_000.0, 0.0], dtype=float),
+    )
+    assert _design_key(left) == _design_key(right)
+
+
+class _PanelEvaluator:
+    def __init__(self, preferred: DamperDesign | None = None):
+        self.preferred = preferred
+
+    def evaluate(self, design):
+        match = self.preferred is not None and np.array_equal(design.counts, self.preferred.counts)
+        value = 0.2 if match else 0.8
+        vector = np.asarray([0.2, value, value])
+        return FixedObjectiveEvaluation(
+            cost=0.2,
+            midr=0.02 * value,
+            pfa_g=value,
+            vector=vector,
+            scalar=float(np.asarray([0.2, 0.45, 0.35]) @ vector),
+            converged=True,
+            status="valid_converged",
+            max_displacement_m=0.0,
+            dissipated_energy_j=0.0,
+        )
+
+
+@pytest.mark.parametrize("method", ["scalar_ga", "nsga2"])
+def test_candidate_pool_replenishes_from_unique_archive_and_keeps_exact_validation_calls(method):
+    duplicate_a = DamperDesign(
+        np.asarray([0, 1], dtype=int),
+        np.asarray([0.0, 50_000.0], dtype=float),
+    )
+    duplicate_b = DamperDesign(
+        np.asarray([0, 1], dtype=int),
+        np.asarray([350_000.0, 50_000.0], dtype=float),
+    )
+    second = DamperDesign(
+        np.asarray([1, 0], dtype=int),
+        np.asarray([50_000.0, 200_000.0], dtype=float),
+    )
+    third = DamperDesign(
+        np.asarray([1, 1], dtype=int),
+        np.asarray([100_000.0, 50_000.0], dtype=float),
+    )
+    terminal = [duplicate_a, duplicate_b]
+    terminal_records = [_synthetic_oracle(design) for design in terminal]
+    archive = [duplicate_a, duplicate_b, second, third]
+    archive_records = [_synthetic_oracle(design) for design in archive]
+    run = CandidateRunResult(
+        method,
+        1103,
+        4,
+        terminal,
+        terminal_records,
+        archive,
+        archive_records,
+    )
+    panel = ValidationPanel(
+        "2-nominal",
+        np.ones((2, 6), dtype=np.float32),
+        {"v1": _PanelEvaluator(third), "v2": _PanelEvaluator(third)},
+    )
+    selected = select_candidate_on_validation(run, panel, pool_size=3)
+    assert selected.pool_size == 3
+    assert selected.validation_calls == 6
+
+
+def test_candidate_pool_fails_closed_when_archive_cannot_supply_frozen_size():
+    duplicate_a = DamperDesign(
+        np.asarray([0, 1], dtype=int),
+        np.asarray([0.0, 50_000.0], dtype=float),
+    )
+    duplicate_b = DamperDesign(
+        np.asarray([0, 1], dtype=int),
+        np.asarray([350_000.0, 50_000.0], dtype=float),
+    )
+    records = [_synthetic_oracle(duplicate_a), _synthetic_oracle(duplicate_b)]
+    run = CandidateRunResult(
+        "scalar_ga",
+        1103,
+        2,
+        [duplicate_a, duplicate_b],
+        records,
+        [duplicate_a, duplicate_b],
+        records,
+    )
+    panel = ValidationPanel(
+        "2-nominal",
+        np.ones((2, 6), dtype=np.float32),
+        {"v1": _PanelEvaluator()},
+    )
+    with pytest.raises(RuntimeError, match=r"required 2 physically unique designs, found 1"):
+        select_candidate_on_validation(run, panel, pool_size=2)
+
+
 def test_candidate_selection_uses_full_validation_panel_and_is_deterministic():
-    space = DesignSpace(2, 2, np.asarray([0.0, 50_000.0, 100_000.0]))
     designs = [
         DamperDesign(np.asarray([0, 0]), np.asarray([0.0, 0.0])),
         DamperDesign(np.asarray([1, 1]), np.asarray([50_000.0, 50_000.0])),
     ]
     records = [_synthetic_oracle(design) for design in designs]
     run = CandidateRunResult("scalar_ga", 1103, 2, designs, records)
-
-    class _PanelEvaluator:
-        def __init__(self, preferred: DamperDesign):
-            self.preferred = preferred
-
-        def evaluate(self, design):
-            match = np.array_equal(design.counts, self.preferred.counts)
-            value = 0.2 if match else 0.8
-            vector = np.asarray([0.2, value, value])
-            return FixedObjectiveEvaluation(
-                cost=0.2, midr=0.02 * value, pfa_g=value, vector=vector,
-                scalar=float(np.asarray([0.2, 0.45, 0.35]) @ vector), converged=True,
-                status="valid_converged", max_displacement_m=0.0, dissipated_energy_j=0.0,
-            )
-
     panel = ValidationPanel(
         "2-nominal",
         np.ones((2, 6), dtype=np.float32),
