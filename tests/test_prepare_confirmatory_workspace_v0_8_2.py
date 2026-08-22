@@ -1,6 +1,9 @@
 from pathlib import Path
 
 import json
+import subprocess
+import sys
+
 import pytest
 
 import scripts.prepare_confirmatory_workspace_v0_8_2 as workspace_module
@@ -114,3 +117,60 @@ def test_workspace_publication_failure_never_exposes_partial_final_state(
         "workspace.json",
         "workspace_state.json",
     ]
+
+
+def test_workspace_publication_fsyncs_staging_and_parent(tmp_path: Path, monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    workspace = tmp_path / "workspace"
+    observed: list[Path] = []
+    original = workspace_module._fsync_directory
+
+    def record_fsync(path: Path) -> None:
+        observed.append(path.resolve())
+        original(path)
+
+    monkeypatch.setattr(workspace_module, "_fsync_directory", record_fsync)
+    prepare_workspace(root, workspace)
+
+    assert len(observed) == 2
+    assert observed[0].parent == tmp_path.resolve()
+    assert observed[0].name.startswith(".workspace.staging-")
+    assert observed[1] == tmp_path.resolve()
+
+
+def test_preparer_is_directly_executable_in_script_mode():
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [sys.executable, "scripts/prepare_confirmatory_workspace_v0_8_2.py", "--help"],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Prepare an outcome-free v0.8.2 execution workspace" in result.stdout
+
+
+def test_reviewed_plan_executes_git_blob_against_supplied_root(tmp_path: Path, monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    calls: list[tuple[list[str], Path | None]] = []
+    original = workspace_module.subprocess.run
+
+    def record_run(args, *pargs, **kwargs):
+        cwd = kwargs.get("cwd")
+        calls.append((list(args), Path(cwd).resolve() if cwd is not None else None))
+        return original(args, *pargs, **kwargs)
+
+    monkeypatch.setattr(workspace_module.subprocess, "run", record_run)
+    workspace_module._reviewed_plan(root)
+
+    planner_calls = [
+        (args, cwd)
+        for args, cwd in calls
+        if args and args[0] == sys.executable and "--output" in args
+    ]
+    assert len(planner_calls) == 1
+    args, cwd = planner_calls[0]
+    root_index = args.index("--root") + 1
+    assert Path(args[root_index]).resolve() == root.resolve()
+    assert cwd == root.resolve()
