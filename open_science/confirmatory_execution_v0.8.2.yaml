@@ -10,6 +10,15 @@ purpose:
   - prevent confirmatory earthquake identity/response leakage into retrofit-policy observations
   - define a balanced use of the frozen 51200-call stochastic training budget across structural states
   - restore the separately preregistered scalar genetic/evolutionary baseline
+  - freeze the pre-existing public damper action grid before confirmatory execution
+
+design_space:
+  source_before_registration: configs/experiments/smoke.yaml
+  max_dampers_per_story: 4
+  slip_force_levels_n: [0.0, 50000.0, 100000.0, 200000.0, 350000.0]
+  per_story_action: [damper_count, slip_force_level_index]
+  zero_count_slip_force_semantics: ignored_by_physics
+  no_post_outcome_grid_change: true
 
 objective_contract:
   directions: [minimize, minimize, minimize]
