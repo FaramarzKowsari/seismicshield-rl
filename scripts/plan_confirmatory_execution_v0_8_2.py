@@ -22,10 +22,10 @@ import yaml
 EXPECTED_SCIENTIFIC_TAG = "confirmatory-v0.8.2-final"
 EXPECTED_EXECUTION_SHA256 = "4be2acca57915ff6954a82dfb03bc5adc647bf1e9594fd01042c7be2af87dd50"
 EXPECTED_STRUCTURAL_MANIFEST_SHA256 = "c4fa4d4ee203bbdb5475bd55140fe2c24246db3254a0f099b7535d4f23a8248f"
+EXPECTED_ALGORITHM_SEEDS = [1103, 2207, 3313, 4421, 5521, 6637, 7753, 8861]
 EXPECTED_TIER1_CALLS = 2_780_992
 EXPECTED_TIER2_CALLS = 39_168
 EXPECTED_STATES = 16
-EXPECTED_SEEDS = 8
 
 
 def sha256_path(path: Path) -> str:
@@ -41,6 +41,17 @@ def load_yaml(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError(f"YAML must be a mapping: {path}")
     return data
+
+
+def frozen_algorithm_seeds(seed_doc: dict[str, Any]) -> list[int]:
+    """Return the exact preregistered algorithm seed list or fail closed."""
+    observed = seed_doc.get("algorithm_seeds")
+    if observed != EXPECTED_ALGORITHM_SEEDS:
+        raise ValueError(
+            "algorithm seed ledger differs from the exact preregistered values: "
+            f"expected {EXPECTED_ALGORITHM_SEEDS!r}, found {observed!r}"
+        )
+    return list(EXPECTED_ALGORITHM_SEEDS)
 
 
 def _state_sort_key(state: tuple[int, str]) -> tuple[int, int, str]:
@@ -76,7 +87,10 @@ def load_structural_states(path: Path, expected_partition_counts: dict[str, int]
                     f"structural manifest count mismatch for {partition}/{state}: "
                     f"expected {expected}, found {observed}"
                 )
-    return [f"{height}:{realization}" for height, realization in sorted(states, key=_state_sort_key)]
+    return [
+        f"{height}:{realization}"
+        for height, realization in sorted(states, key=_state_sort_key)
+    ]
 
 
 def make_shard(**fields: Any) -> dict[str, Any]:
@@ -96,9 +110,7 @@ def build_plan(root: Path) -> dict[str, Any]:
         raise ValueError("gate source tag is not confirmatory-v0.8.2-final")
     if gate.get("confirmatory_runs_allowed") is not True:
         raise ValueError("confirmatory gate does not permit frozen execution")
-    seeds = list(seeds_doc.get("algorithm_seeds") or [])
-    if len(seeds) != EXPECTED_SEEDS or len(set(seeds)) != EXPECTED_SEEDS:
-        raise ValueError("algorithm seed ledger must contain exactly eight unique seeds")
+    seeds = frozen_algorithm_seeds(seeds_doc)
 
     partitions = contract.get("partitions") or {}
     partition_counts = {
@@ -138,17 +150,27 @@ def build_plan(root: Path) -> dict[str, Any]:
     calls_per_state = int(budget["calls_per_structural_state_for_nonpolicy_optimizers"])
     learned_budget = int(budget["simulator_calls_per_method_per_seed"])
     learned_calls_per_state = int(budget["learned_policy_calls_per_state_exactly"])
-    nonpolicy_validation_calls = int(nonpolicy_cfg["validation_calls_per_seed_per_structural_state"])
-    learned_validation_calls = int(learned_cfg["total_validation_calls_per_seed_per_learned_method"])
+    nonpolicy_validation_calls = int(
+        nonpolicy_cfg["validation_calls_per_seed_per_structural_state"]
+    )
+    learned_validation_calls = int(
+        learned_cfg["total_validation_calls_per_seed_per_learned_method"]
+    )
     tier2_per_method = int(confirm["Tier2_calls_per_seeded_method"])
 
     if calls_per_state * len(states) != learned_budget:
         raise ValueError("nonpolicy per-state training calls do not reproduce the frozen budget")
     if learned_calls_per_state * len(states) != learned_budget:
         raise ValueError("learned per-state accounting does not reproduce the frozen shared budget")
-    if nonpolicy_validation_calls != int(nonpolicy_cfg["candidate_pool_per_seed_per_structural_state"]) * validation_records:
+    if nonpolicy_validation_calls != (
+        int(nonpolicy_cfg["candidate_pool_per_seed_per_structural_state"])
+        * validation_records
+    ):
         raise ValueError("nonpolicy validation accounting mismatch")
-    if learned_validation_calls != len(learned_cfg["checkpoints_at_training_calls"]) * int(learned_cfg["calls_per_checkpoint"]):
+    if learned_validation_calls != (
+        len(learned_cfg["checkpoints_at_training_calls"])
+        * int(learned_cfg["calls_per_checkpoint"])
+    ):
         raise ValueError("learned checkpoint validation accounting mismatch")
     calls_per_seeded_tier2_shard = len(states) * confirmatory_records
     if calls_per_seeded_tier2_shard * len(seeds) != tier2_per_method:
@@ -218,7 +240,9 @@ def build_plan(root: Path) -> dict[str, Any]:
                         seed=seed,
                         structural_state_id=state,
                         calls=nonpolicy_validation_calls,
-                        candidate_pool=int(nonpolicy_cfg["candidate_pool_per_seed_per_structural_state"]),
+                        candidate_pool=int(
+                            nonpolicy_cfg["candidate_pool_per_seed_per_structural_state"]
+                        ),
                         atomic_reason="select_one_design_from_exact_32_candidate_pool",
                     )
                 )
@@ -279,8 +303,12 @@ def build_plan(root: Path) -> dict[str, Any]:
     for shard in shards:
         phase_calls[shard["phase"]] += int(shard["calls"])
         phase_shards[shard["phase"]] += 1
-    tier1_calls = sum(calls for phase, calls in phase_calls.items() if phase.startswith("tier1_"))
-    tier2_calls = sum(calls for phase, calls in phase_calls.items() if phase.startswith("tier2_"))
+    tier1_calls = sum(
+        calls for phase, calls in phase_calls.items() if phase.startswith("tier1_")
+    )
+    tier2_calls = sum(
+        calls for phase, calls in phase_calls.items() if phase.startswith("tier2_")
+    )
     if tier1_calls != EXPECTED_TIER1_CALLS:
         raise ValueError(f"Tier-1 planned calls mismatch: {tier1_calls}")
     if tier2_calls != EXPECTED_TIER2_CALLS:
