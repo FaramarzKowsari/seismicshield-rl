@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: confirmatory-runtime-preflight-v0.8.2-${{ github.ref }}
@@ -110,3 +111,56 @@ jobs:
           path: frozen/results/local/confirmatory_v0.8.2/*.json
           if-no-files-found: error
           retention-days: 90
+
+  report-status:
+    if: always() && github.event_name == 'push' && github.repository == 'FaramarzKowsari/seismicshield-rl'
+    runs-on: ubuntu-latest
+    needs: [validate-orchestration, pilot-runtime-preflight]
+    steps:
+      - name: Publish machine-readable run pointer to a stable issue
+        uses: actions/github-script@v7
+        env:
+          VALIDATION_RESULT: ${{ needs.validate-orchestration.result }}
+          PREFLIGHT_RESULT: ${{ needs.pilot-runtime-preflight.result }}
+        with:
+          script: |
+            const title = 'Confirmatory Runtime Preflight v0.8.2 status';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              '### Confirmatory runtime preflight v0.8.2',
+              '',
+              `- validation: **${process.env.VALIDATION_RESULT}**`,
+              `- pilot runtime preflight: **${process.env.PREFLIGHT_RESULT}**`,
+              `- workflow run: ${runUrl}`,
+              `- source commit: \`${context.sha}\``,
+              '- immutable scientific source: `confirmatory-v0.8.2-final`',
+              '- confirmatory structural-response outcomes inspected by this workflow: **no**',
+              '- waveform files uploaded as artifacts: **no**',
+              '',
+              `Recorded at ${new Date().toISOString()}`,
+            ].join('\n');
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = issues.find(
+              issue => !issue.pull_request && issue.title === title
+            );
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: [],
+              });
+            }
