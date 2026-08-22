@@ -16,6 +16,7 @@ if __package__ in {None, ""}:
 from scripts.validate_ground_motion_manifest_v0_8_1 import validate as validate_ground  # noqa: E402
 from scripts.validate_structural_world_manifest_v0_8_1 import validate as validate_structural  # noqa: E402
 
+EXPECTED_GATE_VERSION = "v0.8.2"
 EXPECTED_OSF_PERSISTENT_IDS = {
     "64dtx",
     "10.17605/OSF.IO/64DTX",
@@ -143,12 +144,25 @@ def _require_validation_evidence(data: dict, prefix: str, label: str, reasons: l
         reasons.append(f"{label} validation evidence SHA-256 is not recorded.")
 
 
+def _require_artifact_digest(data: dict, prefix: str, label: str, reasons: list[str]) -> None:
+    if not _is_sha256(data.get(f"{prefix}_validation_artifact_sha256")):
+        reasons.append(f"{label} validation artifact SHA-256 is not recorded.")
+
+
 def check_gate(root: Path, gate_path: Path) -> tuple[bool, list[str]]:
     try:
         data = yaml.safe_load(gate_path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as exc:
         return False, [f"Cannot read gate configuration: {exc}"]
+    if not isinstance(data, dict):
+        return False, ["Gate configuration must be a YAML mapping."]
+
     reasons: list[str] = []
+    if data.get("version") != EXPECTED_GATE_VERSION:
+        reasons.append(
+            f"Confirmatory gate version mismatch: expected {EXPECTED_GATE_VERSION!r}, "
+            f"found {data.get('version')!r}."
+        )
     if data.get("osf_registration_status") != "public":
         reasons.append("OSF registration status is not public.")
     persistent_id = data.get("osf_registration_persistent_id")
@@ -217,6 +231,40 @@ def check_gate(root: Path, gate_path: Path) -> tuple[bool, list[str]]:
     else:
         _require_validation_evidence(
             data, "confirmatory_algorithm_bundle", "Confirmatory algorithm bundle", reasons
+        )
+
+    _digest_ok(
+        root,
+        data.get("confirmatory_execution_contract"),
+        data.get("confirmatory_execution_contract_sha256"),
+        "Confirmatory execution v0.8.2 contract",
+        reasons,
+    )
+    if data.get("confirmatory_execution_validated") is not True:
+        reasons.append("Confirmatory execution v0.8.2 contract is not validated/frozen.")
+    else:
+        _require_validation_evidence(
+            data, "confirmatory_execution", "Confirmatory execution v0.8.2", reasons
+        )
+        _require_artifact_digest(
+            data, "confirmatory_execution", "Confirmatory execution v0.8.2", reasons
+        )
+
+    _digest_ok(
+        root,
+        data.get("confirmatory_analysis_contract"),
+        data.get("confirmatory_analysis_contract_sha256"),
+        "Confirmatory analysis v0.8.2 contract",
+        reasons,
+    )
+    if data.get("confirmatory_analysis_validated") is not True:
+        reasons.append("Confirmatory analysis v0.8.2 contract is not validated/frozen.")
+    else:
+        _require_validation_evidence(
+            data, "confirmatory_analysis", "Confirmatory analysis v0.8.2", reasons
+        )
+        _require_artifact_digest(
+            data, "confirmatory_analysis", "Confirmatory analysis v0.8.2", reasons
         )
 
     _, source_error = validate_source_tag(root, data.get("source_git_tag"))
