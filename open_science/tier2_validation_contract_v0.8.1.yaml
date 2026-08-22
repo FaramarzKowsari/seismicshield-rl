@@ -1,0 +1,47 @@
+version: v0.8.1
+status: post_registration_pre_confirmatory_validation_contract
+osf_registration: https://doi.org/10.17605/OSF.IO/64DTX
+backend:
+  implementation: src/seismicshield_rl/physics/opensees_backend.py
+  openseespy_version: 3.8.0.0
+  structural_material: Elastic
+  damper_material: CoulombDamper
+  excitation: UniformExcitation
+  integration: Newmark
+  gamma: 0.5
+  beta: 0.25
+  convergence_test: NormDispIncr
+  convergence_tolerance: 1.0e-10
+  convergence_iterations: 50
+  system: BandGeneral
+  rayleigh_damping: mass_plus_current_elastic_stiffness
+validation_fixture:
+  ground_motion: data/fixtures/synthetic_pulse.csv
+  structural_contract: open_science/structural_world_freeze_v0.8.1.yaml
+  building_height_stories: 3
+  realization: nominal
+acceptance:
+  no_damper_tier1_vs_tier2_relative_tolerance:
+    midr: 0.05
+    pfa_g: 0.08
+    max_displacement_m: 0.05
+  deterministic_replay_max_absolute_difference: 1.0e-9
+  timestep_sensitivity:
+    baseline_max_substep_s: 0.0025
+    fine_max_substep_s: 0.00125
+    maximum_relative_change:
+      midr: 0.02
+      pfa_g: 0.03
+  coulomb_damper:
+    count_per_story: 1
+    slip_force_n: 50000.0
+    maximum_force_ratio_to_capacity: 1.001
+    energy_dissipation_must_be_positive: true
+rules:
+  confirmatory_ground_motion_used: false
+  validation_failure_opens_gate: false
+  acceptance_thresholds_change_after_results: false
+  tier2_primary_claims_require_validation_pass: true
+notes:
+  - UniformExcitation returns relative nodal response; absolute floor acceleration is reconstructed by adding the ground acceleration.
+  - This validation uses the public synthetic software fixture only and therefore cannot reveal a confirmatory outcome.
