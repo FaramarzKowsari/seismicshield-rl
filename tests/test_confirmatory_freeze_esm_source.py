@@ -27,11 +27,16 @@ def test_amendment_explicitly_precedes_registration_and_confirmatory_results():
     assert "AFAD/TADAS" in text
 
 
-def test_public_osf_and_completed_v0_8_1_gate_are_recorded():
+def test_public_osf_and_v0_8_2_refinalization_state_are_recorded():
     text = GATE.read_text(encoding="utf-8")
+    assert "version: v0.8.2" in text
     assert "osf_registration_status: public" in text
     assert "osf_registration_persistent_id: https://doi.org/10.17605/OSF.IO/64DTX" in text
+    # The v0.8.1 immutable tag remains the parent provenance anchor until the
+    # dedicated local finalizer creates confirmatory-v0.8.2-final.
     assert "source_git_tag: confirmatory-v0.8.1-final" in text
     assert "structural_world_manifest_validated: true" in text
     assert "tier_2_backend_validated: true" in text
-    assert "confirmatory_runs_allowed: true" in text
+    assert "confirmatory_execution_validated: true" in text
+    assert "confirmatory_analysis_validated: true" in text
+    assert "confirmatory_runs_allowed: false" in text
