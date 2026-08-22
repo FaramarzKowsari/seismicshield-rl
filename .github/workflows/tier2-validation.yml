@@ -1,0 +1,36 @@
+name: Tier-2 Validation
+
+on:
+  pull_request:
+    paths:
+      - "src/seismicshield_rl/physics/**"
+      - "src/seismicshield_rl/structural_worlds.py"
+      - "scripts/validate_tier2_backend.py"
+      - "open_science/tier2_validation_contract_v0.8.1.yaml"
+      - "open_science/structural_world_freeze_v0.8.1.yaml"
+      - "pyproject.toml"
+      - ".github/workflows/tier2-validation.yml"
+  workflow_dispatch:
+
+jobs:
+  validate-opensees:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install frozen Tier-2 stack
+        run: python -m pip install -e ".[dev,opensees]"
+      - name: Show OpenSees version
+        run: python -c "import openseespy.opensees as ops; print(ops.version())"
+      - name: Run Tier-2 contract test
+        run: python -m pytest -q tests/test_opensees_backend.py
+      - name: Write Tier-2 validation evidence
+        run: python scripts/validate_tier2_backend.py --output tier2_validation_v0.8.1.json
+      - name: Upload validation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: tier2-validation-v0.8.1
+          path: tier2_validation_v0.8.1.json
+          if-no-files-found: error

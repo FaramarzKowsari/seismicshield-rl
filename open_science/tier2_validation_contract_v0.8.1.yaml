@@ -1,0 +1,57 @@
+version: v0.8.1
+status: post_registration_pre_confirmatory_validation_contract
+osf_registration: https://doi.org/10.17605/OSF.IO/64DTX
+backend:
+  implementation: src/seismicshield_rl/physics/opensees_backend.py
+  openseespy_version: 3.8.0.0
+  structural_material: Elastic
+  damper_material: CoulombDamper
+  excitation: UniformExcitation
+  integration: Newmark
+  gamma: 0.6
+  beta: 0.3025
+  convergence_test: NormDispIncr
+  convergence_tolerance: 1.0e-8
+  convergence_iterations: 100
+  algorithm: NewtonLineSearch
+  line_search_type: Bisection
+  transient_sublevels: 2
+  transient_substeps: 10
+  system: BandGeneral
+  rayleigh_damping: mass_plus_current_elastic_stiffness
+validation_fixture:
+  ground_motion: data/fixtures/tier2_validation_sine.csv
+  analytic_definition: 2.0*sin(2*pi*1.2*t)*exp(-0.3*t)
+  duration_s: 2.0
+  sampling_interval_s: 0.01
+  initial_acceleration_mps2: 0.0
+  structural_contract: open_science/structural_world_freeze_v0.8.1.yaml
+  building_height_stories: 3
+  realization: nominal
+acceptance:
+  no_damper_tier1_vs_tier2_relative_tolerance:
+    midr: 0.05
+    pfa_g: 0.08
+    max_displacement_m: 0.05
+  deterministic_replay_max_absolute_difference: 1.0e-9
+  timestep_sensitivity:
+    baseline_max_substep_s: 0.0025
+    fine_max_substep_s: 0.00125
+    maximum_relative_change:
+      midr: 0.02
+      pfa_g: 0.03
+  coulomb_damper:
+    count_per_story: 1
+    slip_force_n: 50000.0
+    maximum_force_ratio_to_capacity: 1.001
+    energy_dissipation_must_be_positive: true
+rules:
+  confirmatory_ground_motion_used: false
+  validation_failure_opens_gate: false
+  acceptance_thresholds_change_after_results: false
+  tier2_primary_claims_require_validation_pass: true
+notes:
+  - UniformExcitation returns relative nodal response; absolute floor acceleration is reconstructed by adding the ground acceleration.
+  - This validation uses a public analytic software fixture only and therefore cannot reveal a confirmatory outcome.
+  - The original synthetic_pulse.csv software fixture starts with nonzero acceleration. With an ideal Coulomb law, zero initial relative velocity plus nonzero initial forcing creates a nondifferentiable first-step diagnostic. Before any confirmatory waveform was read, Tier-2 validation was moved to the explicitly defined analytic zero-start fixture above. Acceptance thresholds were not relaxed.
+  - The earlier public-synthetic diagnostic also motivated freezing NewtonLineSearch with documented substep fallback and numerically damped Newmark(0.6,0.3025), again before any confirmatory waveform was read and without relaxing acceptance thresholds.

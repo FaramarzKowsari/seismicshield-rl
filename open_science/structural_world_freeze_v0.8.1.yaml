@@ -1,0 +1,56 @@
+version: v0.8.1
+status: post_registration_pre_confirmatory_implementation_freeze
+osf_registration: https://doi.org/10.17605/OSF.IO/64DTX
+scientific_role: synthetic_canonical_archetype_and_robustness_envelope
+claim_boundary:
+  calibrated_real_building_statistics: false
+  physical_population_distribution_claimed: false
+  primary_confirmatory_archetype_families: 1
+  additional_archetypes_or_tier3_models: exploratory_only
+canonical_archetype:
+  id: canonical-shear-friction-v0.8.1
+  description: elastic shear-building frame with nonlinear Coulomb friction-damper devices
+  building_heights_stories: [3, 6, 10, 20]
+  story_height_m: 3.2
+  nominal_mass_profile:
+    base_floor_mass_kg: 200000.0
+    roof_to_base_ratio: 0.90
+    interpolation: linear_by_normalized_story_index
+  nominal_stiffness_profile:
+    base_story_stiffness_n_per_m: 180000000.0
+    roof_to_base_ratio: 0.60
+    interpolation: linear_by_normalized_story_index
+  nominal_damping_ratio: 0.05
+structural_uncertainty:
+  realizations_per_height:
+    nominal: 1
+    latin_hypercube: 3
+  lhs_seed: 24681357
+  lhs_algorithm: sha256_stratified_v1
+  normalized_draws_reused_across_heights: true
+  rationale: paired_height_transfer_and_balanced_uncertainty
+  dimensions:
+    mass_scale: {minimum: 0.90, maximum: 1.10}
+    stiffness_scale: {minimum: 0.80, maximum: 1.20}
+    damping_ratio: {minimum: 0.04, maximum: 0.06}
+    damper_capacity_scale: {minimum: 0.90, maximum: 1.10}
+  interpretation: synthetic_robustness_envelope_not_calibrated_distribution
+world_manifest:
+  ground_motion_manifest: data/manifests/ground_motion_manifest.csv
+  output: data/manifests/structural_world_manifest.csv
+  every_ground_motion_crossed_with_all_heights_and_realizations: true
+  total_ground_motion_records: 136
+  worlds_per_ground_motion: 16
+  total_worlds: 2176
+  confirmatory_ground_motion_records: 48
+  confirmatory_worlds: 768
+  world_id_algorithm: SHA-256
+  world_id_salt: SeismicShield-RL-v0.8.1-structural-world
+rules:
+  no_confirmatory_outcome_used_to_choose_ranges: true
+  no_post_outcome_reassignment_or_redraw: true
+  all_methods_use_identical_world_ids: true
+  pilot_excluded_from_confirmatory_inference: true
+notes:
+  - Exact uncertainty ranges were not specified numerically in the OSF form; this timestamped post-registration implementation freeze supplies those values before any confirmatory outcome is produced or inspected.
+  - The ranges are deliberately labeled synthetic robustness envelopes. They must not be described as empirically calibrated population distributions.
