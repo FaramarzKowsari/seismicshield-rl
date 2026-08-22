@@ -1,0 +1,42 @@
+version: v0.8.2
+status: post_registration_pre_confirmatory_support_baseline_freeze
+osf_registration: https://doi.org/10.17605/OSF.IO/64DTX
+confirmatory_outcomes_inspected_before_this_freeze: false
+design_grid: open_science/confirmatory_execution_v0.8.2.yaml
+
+shared_training_feature_precompute:
+  backend: Tier1_fast_nonlinear_MDOF
+  design: no_damper
+  structural_states: 16
+  training_records_per_state: 52
+  total_calls: 832
+  charged_to_stochastic_51200_design_budget: false
+  reason: common_method_independent_training_descriptor_precomputation
+  reported_separately: true
+
+baselines:
+  no_damper:
+    counts_per_story: 0
+    slip_force_n: 0.0
+    depends_on_earthquake_identity: false
+  uniform_allocation:
+    counts_per_story: 1
+    slip_force_n: 100000.0
+    source: pre_existing_public_default_in_src/seismicshield_rl/baselines/heuristics.py
+    depends_on_earthquake_identity: false
+  drift_proportional:
+    source: src/seismicshield_rl/baselines/heuristics.py
+    reference_demand: arithmetic_mean_across_52_training_records_of_per_story_max_abs_undamped_drift
+    total_dampers: equal_to_number_of_stories
+    slip_force_n: 100000.0
+    max_dampers_per_story: 4
+    allocation_iteration: add_one_damper_to_eligible_story_maximizing_demand_divided_by_current_count_plus_one
+    exact_tie_break: lowest_story_index_via_numpy_argmax
+    confirmatory_or_validation_response_used_to_construct_design: false
+
+execution:
+  one_fixed_support_design_per_structural_state: true
+  same_design_reused_on_all_validation_and_confirmatory_records_for_that_state: true
+  failure_handling: same_frozen_failure_vector_as_seeded_methods
+  primary_H1_Holm_family_membership: false
+  reported_as_contextual_support_baselines: true
