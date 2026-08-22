@@ -14,6 +14,7 @@ from collections import Counter
 import csv
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -56,6 +57,13 @@ def _git_text(root: Path, *args: str) -> str:
         detail = result.stderr.strip() or result.stdout.strip() or "git command failed"
         raise ValueError(detail)
     return result.stdout.strip()
+
+
+def _frozen_python_env(worktree: Path) -> dict[str, str]:
+    """Force subprocess package imports to resolve from the immutable worktree only."""
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str((worktree / "src").resolve())
+    return env
 
 
 def validate_immutable_scientific_gate(root: Path) -> str:
@@ -111,9 +119,36 @@ def validate_immutable_scientific_gate(root: Path) -> str:
         try:
             if _git_text(worktree, "rev-parse", "HEAD") != EXPECTED_SCIENTIFIC_COMMIT:
                 raise ValueError("immutable gate validation worktree resolved to the wrong commit")
+            frozen_env = _frozen_python_env(worktree)
+            module_probe = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    "import pathlib, seismicshield_rl.structural_worlds as m; "
+                    "print(pathlib.Path(m.__file__).resolve())",
+                ],
+                cwd=worktree,
+                env=frozen_env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if module_probe.returncode:
+                detail = module_probe.stderr.strip() or module_probe.stdout.strip()
+                raise ValueError(f"cannot import frozen scientific package: {detail}")
+            module_path = Path(module_probe.stdout.strip()).resolve()
+            frozen_src = (worktree / "src").resolve()
+            try:
+                module_path.relative_to(frozen_src)
+            except ValueError as exc:
+                raise ValueError(
+                    "frozen gate checker package isolation failed: "
+                    f"seismicshield_rl resolved to {module_path}, outside {frozen_src}"
+                ) from exc
             gate_check = subprocess.run(
                 [sys.executable, "scripts/check_confirmatory_gate.py"],
                 cwd=worktree,
+                env=frozen_env,
                 text=True,
                 capture_output=True,
                 check=False,
