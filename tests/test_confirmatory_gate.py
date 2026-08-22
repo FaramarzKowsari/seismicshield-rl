@@ -1,9 +1,15 @@
+import hashlib
 import subprocess
 from pathlib import Path
 
 import yaml
 
-from scripts.check_confirmatory_gate import check_gate, validate_seed_ledger, validate_source_tag
+from scripts.check_confirmatory_gate import (
+    check_gate,
+    digest_matches,
+    validate_seed_ledger,
+    validate_source_tag,
+)
 
 
 def test_confirmatory_gate_remains_blocked_after_public_registration_until_other_prerequisites_are_met():
@@ -12,6 +18,8 @@ def test_confirmatory_gate_remains_blocked_after_public_registration_until_other
     assert not ok
     assert not any("OSF registration status is not public" in reason for reason in reasons)
     assert not any("identifier does not match preregistration" in reason for reason in reasons)
+    assert not any("Frozen numerical config SHA-256" in reason for reason in reasons)
+    assert not any("Confirmatory algorithm bundle SHA-256" in reason for reason in reasons)
     assert any("confirmatory_runs_allowed is false" in reason for reason in reasons)
 
 
@@ -59,6 +67,22 @@ def _git(repo: Path, *args: str) -> str:
         ["git", *args], cwd=repo, text=True, capture_output=True, check=True
     )
     return result.stdout.strip()
+
+
+def test_digest_matches_canonical_git_blob_when_worktree_has_crlf(tmp_path: Path):
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "config", "user.name", "Software Validation Fixture")
+    _git(tmp_path, "config", "user.email", "fixture@invalid.local")
+    path = tmp_path / "contract.yaml"
+    canonical = b"version: 1\nstatus: frozen\n"
+    path.write_bytes(canonical)
+    _git(tmp_path, "add", path.name)
+    _git(tmp_path, "commit", "-q", "-m", "freeze canonical contract")
+    expected = hashlib.sha256(canonical).hexdigest()
+
+    path.write_bytes(canonical.replace(b"\n", b"\r\n"))
+    assert hashlib.sha256(path.read_bytes()).hexdigest() != expected
+    assert digest_matches(tmp_path, path.name, expected)
 
 
 def test_source_git_tag_missing_is_rejected(tmp_path: Path):
