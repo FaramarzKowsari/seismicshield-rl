@@ -1,6 +1,13 @@
 name: Finalize Confirmatory v0.8.2
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/finalize-confirmatory-v0.8.2.yml"
+      - "scripts/finalize_confirmatory_gate_v0_8_2_local.py"
+      - "scripts/check_confirmatory_gate.py"
+      - "open_science/confirmatory_gate_v0.8.0.yaml"
+      - "tests/test_confirmatory_gate.py"
   push:
     branches: [main]
     paths:
@@ -10,15 +17,41 @@ on:
       - "open_science/confirmatory_gate_v0.8.0.yaml"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: finalize-confirmatory-v0.8.2
+  group: finalize-confirmatory-v0.8.2-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout proposed finalizer with tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install gate dependencies
+        run: python -m pip install -e .
+
+      - name: Validate finalizer and gate regression contract
+        run: |
+          python -m py_compile scripts/finalize_confirmatory_gate_v0_8_2_local.py
+          python -m pytest tests/test_confirmatory_gate.py -q
+
   finalize:
-    if: github.repository == 'FaramarzKowsari/seismicshield-rl'
+    if: github.event_name == 'push' && github.repository == 'FaramarzKowsari/seismicshield-rl'
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
