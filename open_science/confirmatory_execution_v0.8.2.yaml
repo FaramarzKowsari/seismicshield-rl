@@ -1,0 +1,171 @@
+version: v0.8.2
+status: post_registration_pre_confirmatory_execution_clarification
+osf_registration: https://doi.org/10.17605/OSF.IO/64DTX
+parent_source_tag: confirmatory-v0.8.1-final
+confirmatory_outcomes_inspected_before_this_freeze: false
+
+purpose:
+  - align executable objective normalization with the public OSF registration
+  - make validation checkpoint selection executable rather than aspirational
+  - prevent confirmatory earthquake identity/response leakage into retrofit-policy observations
+  - define a balanced use of the frozen 51200-call stochastic training budget across structural states
+  - restore the separately preregistered scalar genetic/evolutionary baseline
+
+objective_contract:
+  directions: [minimize, minimize, minimize]
+  vector: [normalized_cost, MIDR_over_0.02, PFA_g_over_1.0]
+  midr_normalizer: 0.02
+  pfa_g_normalizer: 1.0
+  scalar_training_weights: [0.20, 0.45, 0.35]
+  pareto_hypervolume_reference_point: [1.05, 5.00, 5.00]
+  fixed_failure_vector: [1.05, 5.00, 5.00]
+  fixed_training_failure_penalty_added_to_scalar: 10.0
+  no_outcome_dependent_renormalization: true
+
+information_boundary:
+  primary_task: robust_offline_passive_retrofit_co_design
+  design_granularity: one_design_per_structural_state_per_seed
+  structural_state: [building_height_stories, realization_id]
+  structural_states_total: 16
+  exact_confirmatory_record_identity_available_to_policy: false
+  exact_confirmatory_ground_motion_samples_available_to_policy: false
+  exact_confirmatory_undamped_response_available_to_policy: false
+  policy_features:
+    - normalized_story_index
+    - normalized_mass_profile
+    - normalized_stiffness_profile
+    - training_set_aggregate_undamped_story_response_descriptor
+    - training_set_aggregate_undamped_MIDR
+    - training_set_aggregate_undamped_PFA_g
+  response_descriptor_source_partition: training
+  aggregation: arithmetic_mean_over_all_52_training_records_for_the_same_structural_state
+  note: the same frozen structural-state feature matrix is used when choosing a design for validation and confirmatory records
+
+partitions:
+  training_records: 52
+  validation_records: 20
+  pilot_records: 16
+  confirmatory_records: 48
+  pilot_used_for_primary_training_or_selection: false
+  confirmatory_used_for_training_selection_or_tuning: false
+
+training_budget:
+  stochastic_methods:
+    - random_search
+    - scalar_ga
+    - nsga2
+    - ppo
+    - ippo
+    - mappo
+  simulator_calls_per_method_per_seed: 51200
+  simulator_call_is_one_Tier1_world_evaluation: true
+  failed_world_consumes_one_call: true
+  structural_states: 16
+  calls_per_structural_state_for_nonpolicy_optimizers: 3200
+  learned_policy_budget_is_shared_across_all_16_states: true
+  learned_policy_context_schedule: sha256_balanced_cycles_v1
+  learned_policy_calls_per_state_exactly: 3200
+  training_record_schedule_within_state: sha256_balanced_cycles_v1
+  schedule_key_fields: [algorithm_seed, structural_state_id, cycle_index, record_id]
+  same_record_schedule_for_all_stochastic_methods_given_seed_and_state: true
+
+validation_selection:
+  partition: validation
+  records_per_structural_state: 20
+  all_validation_records_used_for_each_selected_candidate_or_policy_checkpoint: true
+  learned_methods:
+    checkpoints_at_training_calls: [5120, 10240, 15360, 20480, 25600, 30720, 35840, 40960, 46080, 51200]
+    calls_per_checkpoint: 320
+    total_validation_calls_per_seed_per_learned_method: 3200
+    selection_metric: mean_frozen_scalar_objective_across_320_validation_worlds
+    tie_break: earliest_checkpoint
+    action_at_validation_and_confirmatory: greedy_argmax_per_story
+  nonpolicy_optimizers:
+    candidate_pool_per_seed_per_structural_state: 32
+    candidate_pool_source:
+      random_search: lowest_training_scalar_unique_designs
+      scalar_ga: lowest_training_scalar_unique_designs
+      nsga2: nondominated_rank_then_crowding_then_training_scalar
+    validation_calls_per_seed_per_structural_state: 640
+    total_validation_calls_per_seed_per_nonpolicy_method: 10240
+    selection_metric: mean_frozen_scalar_objective_across_20_validation_records_for_that_state
+    tie_break: [lower_mean_MIDR_over_0.02, lower_mean_PFA_g_over_1.0, lower_normalized_cost, lexicographic_design]
+    final_designs_per_method_seed: 16
+
+methods:
+  deterministic_support:
+    - no_damper
+    - uniform_allocation
+    - drift_proportional_heuristic
+  stochastic_required:
+    - random_search
+    - scalar_ga
+    - nsga2
+    - ppo
+    - ippo
+    - mappo
+  scalar_ga:
+    population_size: 256
+    tournament_size: 2
+    crossover_probability: 0.90
+    mutation_probability_per_gene: inverse_number_of_genes
+    crossover: uniform_discrete
+    mutation: uniform_resample_different_value
+    survival: scalar_objective_then_lexicographic_design
+  nsga2:
+    population_size: 256
+    crossover_probability: 0.90
+    survival: nondominated_sorting_plus_crowding_distance
+  learned_policy_architecture_and_optimizer: open_science/confirmatory_algorithm_bundle_v0.8.1.yaml
+
+confirmatory_execution:
+  backend: Tier2_OpenSeesPy
+  designs_selected_without_confirmatory_outcomes: true
+  seeded_designs_per_method_per_structural_state: 8
+  confirmatory_records_per_structural_state: 48
+  Tier2_calls_per_seeded_method: 6144
+  primary_seeded_methods: [random_search, scalar_ga, nsga2, ppo, ippo, mappo]
+  maximum_seeded_method_Tier2_calls_total: 36864
+  no_damper_anchor_added_to_each_method_front: true
+  no_confirmatory_rerun_for_algorithmic_or_solver_failure: true
+  infrastructure_failure_rerun_requires_same_world_design_seed_and_audit_record: true
+
+pareto_and_cost_slice_rules:
+  front_cardinality_from_seeded_methods: at_most_8_plus_common_no_damper_anchor
+  nondominance: weak_componentwise_with_at_least_one_strict_improvement
+  hypervolume_reference_point: [1.05, 5.00, 5.00]
+  points_outside_reference_box_contribute_zero_volume: true
+  cost_ceilings: [0.25, 0.50, 0.75, 1.00]
+  cost_slice_drift_rule: among designs_with_cost_at_or_below_ceiling choose lowest_MIDR; tie_break_PFA_then_cost_then_seed
+  cost_slice_pfa_rule: among designs_with_cost_at_or_below_ceiling choose lowest_PFA; tie_break_MIDR_then_cost_then_seed
+  no_interpolation_between_discrete_designs: true
+  no_extrapolation: true
+
+primary_event_level_inference:
+  confirmatory_event_clusters: 12
+  worlds_per_event: 64
+  event_summary_for_hypervolume: arithmetic_mean_of_world_level_hypervolume
+  primary_contrasts: [MAPPO_vs_PPO, MAPPO_vs_NSGA-II, MAPPO_vs_IPPO]
+  paired_effect: mean_of_12_event_level_differences
+  cluster_bootstrap_repetitions: 20000
+  cluster_bootstrap_seed: 998035145
+  exact_event_level_sign_flips: 4096
+  multiplicity: Holm
+  alpha: 0.05
+
+secondary_ood:
+  unseen_earthquake_events: confirmatory_partition
+  structural_perturbation: compare_nominal_vs_three_frozen_LHS_realizations
+  building_height_transfer:
+    status: secondary_separately_trained_transfer_run
+    source_heights: [3, 6, 10]
+    held_out_height: 20
+    must_not_replace_primary_all_height_model: true
+
+reproducibility:
+  every_Tier1_and_Tier2_call_logged: true
+  required_call_fields: [method, seed, partition, world_id, structural_state_id, record_id, design_hash, status, vector, scalar, wall_clock_s]
+  model_checkpoint_hashes_recorded: true
+  selected_design_hashes_recorded: true
+  environment_snapshot_recorded: true
+  execution_must_refuse_if_confirmatory_gate_is_not_PASS: true
