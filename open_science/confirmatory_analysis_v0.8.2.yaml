@@ -1,0 +1,107 @@
+version: v0.8.2
+status: post_registration_pre_confirmatory_analysis_freeze
+osf_registration: https://doi.org/10.17605/OSF.IO/64DTX
+confirmatory_outcomes_inspected_before_this_freeze: false
+execution_contract: open_science/confirmatory_execution_v0.8.2.yaml
+
+input_unit:
+  atomic_result: one_method_seed_design_on_one_structural_world
+  primary_confirmatory_worlds: 768
+  earthquake_event_clusters: 12
+  worlds_per_event: 64
+  methods_share_identical_world_ids: true
+  failure_vector_retained: [1.05, 5.00, 5.00]
+  no_method_specific_failure_exclusion: true
+
+pareto_hypervolume:
+  objective_directions: [minimize, minimize, minimize]
+  objective_vector: [normalized_cost, MIDR_over_0.02, PFA_g_over_1.0]
+  reference_point: [1.05, 5.00, 5.00]
+  method_world_point_set: eight_seed_selected_designs_plus_common_no_damper_anchor
+  duplicate_points_removed: true
+  dominated_points_removed_before_hypervolume: true
+  point_with_any_coordinate_greater_than_reference_contributes_zero: true
+  exact_algorithm: union_of_axis_aligned_boxes_via_inclusion_exclusion
+  maximum_expected_points_per_method_world: 9
+  world_hypervolume_then_event_aggregation: true
+  event_aggregation: arithmetic_mean_across_64_worlds
+
+H1_pareto_performance:
+  oriented_effect_positive_favors_MAPPO: MAPPO_HV_minus_comparator_HV
+  contrasts: [MAPPO_vs_PPO, MAPPO_vs_NSGA-II, MAPPO_vs_IPPO]
+  point_estimate: arithmetic_mean_of_12_event_differences
+  confidence_interval: event_cluster_bootstrap_percentile_95
+  sign_flip_test: exact_two_sided
+  multiplicity_family: all_three_H1_contrasts
+  multiplicity_procedure: Holm
+  alpha: 0.05
+
+cost_slices:
+  ceilings: [0.25, 0.50, 0.75, 1.00]
+  eligible_design_rule: normalized_cost_less_than_or_equal_to_ceiling
+  common_no_damper_anchor_is_eligible: true
+  MIDR_selection: lowest_MIDR_then_PFA_then_cost_then_seed
+  PFA_selection: lowest_PFA_then_MIDR_then_cost_then_seed
+  interpolation: none
+  extrapolation: none
+  world_response_then_event_aggregation: true
+  event_aggregation: median_across_64_worlds
+
+H2_structural_response_tradeoff:
+  comparators: [PPO, NSGA-II, IPPO]
+  metrics: [MIDR, PFA_g]
+  ceilings: [0.25, 0.50, 0.75, 1.00]
+  oriented_effect_positive_favors_MAPPO:
+    MIDR: comparator_event_median_minus_MAPPO_event_median
+    PFA_g: comparator_event_median_minus_MAPPO_event_median
+  point_estimate: arithmetic_mean_of_12_oriented_event_differences
+  confidence_interval: event_cluster_bootstrap_percentile_95
+  sign_flip_test: exact_two_sided
+  multiplicity_family_size: 24
+  multiplicity_family_definition: all_3_comparators_x_4_cost_ceilings_x_2_response_metrics
+  multiplicity_procedure: Holm
+  alpha: 0.05
+  interpretation_rule: MIDR improvement is not an unqualified benefit when paired PFA evidence is materially adverse
+
+H3_ood_generalization:
+  status: prespecified_secondary_robustness_inference
+  unseen_events: confirmatory_events_relative_to_validation_summary
+  structural_uncertainty: nominal_vs_three_frozen_LHS_realizations
+  building_height_transfer: separately_trained_3_6_10_to_20_secondary_run
+  report_effect_sizes_and_95pct_event_cluster_intervals: true
+  no_primary_significance_claim_from_H3: true
+
+H4_multi_agent_contribution:
+  comparison: MAPPO_vs_IPPO
+  inferential_evidence_sources: [H1_hypervolume_family, H2_response_family]
+  no_additional_unadjusted_p_value: true
+
+resampling:
+  cluster_unit: earthquake_event
+  cluster_count: 12
+  bootstrap_repetitions: 20000
+  bootstrap_seed: 998035145
+  bootstrap_sampling: sample_12_events_with_replacement
+  confidence_interval: percentile_2.5_97.5
+  sign_flip_configurations: 4096
+  sign_flip_enumeration: all_2_power_12_patterns
+  sign_flip_sidedness: two_sided_absolute_mean
+  zero_differences_retained: true
+
+holm:
+  algorithm: standard_step_down
+  stable_tie_order: lexical_contrast_id
+  adjusted_p_values_monotone: true
+  cap_at_one: true
+
+reporting:
+  retain_world_level_rows: true
+  retain_event_level_summaries: true
+  report_raw_p_values: true
+  report_Holm_adjusted_p_values: true
+  report_effect_sizes: true
+  report_bootstrap_intervals: true
+  report_failure_counts_by_method_and_status: true
+  report_Tier1_calls: true
+  report_Tier2_calls: true
+  report_wall_clock_and_environment_metadata: true
