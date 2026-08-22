@@ -27,9 +27,9 @@ confirmatory_analysis_validation_workflow_run: https://github.com/FaramarzKowsar
 confirmatory_analysis_validation_evidence_sha256: 047523bfc65801062351230fc7cbf28df6dac0bd0e625f907aec168e3b17f62a
 confirmatory_analysis_validation_artifact_sha256: 50f50b0263563d7e13741366c181cd1602f01ded0a41ce32cf63cbcb9af11cfc
 confirmatory_analysis_validated: true
-source_git_tag: confirmatory-v0.8.1-final
+source_git_tag: confirmatory-v0.8.2-final
 tier_2_validation_contract: open_science/tier2_validation_contract_v0.8.1.yaml
 tier_2_validation_workflow_run: https://github.com/FaramarzKowsari/seismicshield-rl/actions/runs/32576903451
 tier_2_validation_evidence_sha256: c36464bef8fdc338a767aa9c3591c017725ec7c8e97d8bb2c67239de13e8446e
 tier_2_backend_validated: true
-confirmatory_runs_allowed: false
+confirmatory_runs_allowed: true
