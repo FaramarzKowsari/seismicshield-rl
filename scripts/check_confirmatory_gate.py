@@ -13,7 +13,8 @@ import yaml
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.validate_ground_motion_manifest_v0_8_1 import validate  # noqa: E402
+from scripts.validate_ground_motion_manifest_v0_8_1 import validate as validate_ground  # noqa: E402
+from scripts.validate_structural_world_manifest_v0_8_1 import validate as validate_structural  # noqa: E402
 
 EXPECTED_OSF_PERSISTENT_IDS = {
     "64dtx",
@@ -29,6 +30,12 @@ EXPECTED_SEED_LEDGER = {
     "manifest_algorithm": "SHA-256",
     "manifest_salt": "SeismicShield-RL-v0.8.0-OSF-2026",
 }
+
+
+def _is_sha256(value: object) -> bool:
+    return isinstance(value, str) and len(value) == 64 and all(
+        char in "0123456789abcdef" for char in value.lower()
+    )
 
 
 def _digest_ok(root: Path, relative: object, expected: object, label: str, reasons: list[str]) -> None:
@@ -107,31 +114,82 @@ def check_gate(root: Path, gate_path: Path) -> tuple[bool, list[str]]:
         reasons.append("OSF registration status is not public.")
     persistent_id = data.get("osf_registration_persistent_id")
     if not isinstance(persistent_id, str) or persistent_id.strip() not in EXPECTED_OSF_PERSISTENT_IDS:
-        reasons.append("Public OSF registration identifier does not match preregistration 64dtx / DOI 10.17605/OSF.IO/64DTX.")
+        reasons.append(
+            "Public OSF registration identifier does not match preregistration 64dtx / DOI 10.17605/OSF.IO/64DTX."
+        )
 
     manifest = data.get("ground_motion_manifest")
     if not isinstance(manifest, str) or not (root / manifest).is_file():
         reasons.append("A frozen real ground-motion manifest is absent.")
     else:
-        manifest_errors = validate(root / manifest)
+        manifest_errors = validate_ground(root / manifest)
         reasons.extend(f"Ground-motion manifest: {error}" for error in manifest_errors)
-        _digest_ok(root, manifest, data.get("ground_motion_manifest_sha256"), "Ground-motion manifest", reasons)
+        _digest_ok(
+            root,
+            manifest,
+            data.get("ground_motion_manifest_sha256"),
+            "Ground-motion manifest",
+            reasons,
+        )
 
-    _digest_ok(root, data.get("structural_world_manifest"), data.get("structural_world_manifest_sha256"), "Structural-world manifest", reasons)
+    structural = data.get("structural_world_manifest")
+    if not isinstance(structural, str) or not (root / structural).is_file():
+        reasons.append("A frozen structural-world manifest is absent.")
+    else:
+        structural_errors = validate_structural(root / structural)
+        reasons.extend(f"Structural-world manifest: {error}" for error in structural_errors)
+        _digest_ok(
+            root,
+            structural,
+            data.get("structural_world_manifest_sha256"),
+            "Structural-world manifest",
+            reasons,
+        )
     if data.get("structural_world_manifest_validated") is not True:
         reasons.append("Structural-world manifest is not validated.")
+
+    structural_contract = data.get("structural_world_contract")
+    if not isinstance(structural_contract, str) or not (root / structural_contract).is_file():
+        reasons.append("Structural-world implementation freeze is absent.")
+
     seed_ledger = data.get("seed_ledger")
     if not isinstance(seed_ledger, str) or not (root / seed_ledger).is_file():
         reasons.append("Seed ledger is absent.")
     else:
         reasons.extend(validate_seed_ledger(root / seed_ledger))
-    _digest_ok(root, data.get("frozen_numerical_config"), data.get("config_sha256"), "Frozen numerical config", reasons)
+    _digest_ok(
+        root,
+        data.get("frozen_numerical_config"),
+        data.get("config_sha256"),
+        "Frozen numerical config",
+        reasons,
+    )
+
+    algorithm_bundle = data.get("confirmatory_algorithm_bundle")
+    _digest_ok(
+        root,
+        algorithm_bundle,
+        data.get("confirmatory_algorithm_bundle_sha256"),
+        "Confirmatory algorithm bundle",
+        reasons,
+    )
+    if data.get("confirmatory_algorithm_bundle_validated") is not True:
+        reasons.append("Confirmatory algorithm bundle is not validated/frozen.")
 
     _, source_error = validate_source_tag(root, data.get("source_git_tag"))
     if source_error:
         reasons.append(source_error)
+
     if data.get("tier_2_backend_validated") is not True:
         reasons.append("Tier-2 backend is not validated.")
+    else:
+        workflow = data.get("tier_2_validation_workflow_run")
+        evidence_sha = data.get("tier_2_validation_evidence_sha256")
+        if not isinstance(workflow, str) or not workflow.startswith("https://github.com/"):
+            reasons.append("Tier-2 validation workflow run is not recorded.")
+        if not _is_sha256(evidence_sha):
+            reasons.append("Tier-2 validation evidence SHA-256 is not recorded.")
+
     if data.get("confirmatory_runs_allowed") is not True:
         reasons.append("confirmatory_runs_allowed is false.")
     return not reasons, reasons
@@ -140,7 +198,11 @@ def check_gate(root: Path, gate_path: Path) -> tuple[bool, list[str]]:
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--gate", type=Path, default=root / "open_science/confirmatory_gate_v0.8.0.yaml")
+    parser.add_argument(
+        "--gate",
+        type=Path,
+        default=root / "open_science/confirmatory_gate_v0.8.0.yaml",
+    )
     args = parser.parse_args()
     ok, reasons = check_gate(root, args.gate)
     print(f"Confirmatory gate: {'PASS' if ok else 'BLOCKED'}")
