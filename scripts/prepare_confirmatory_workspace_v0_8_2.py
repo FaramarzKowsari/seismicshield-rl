@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 from typing import Any
@@ -143,6 +144,71 @@ def _workspace_summary(plan: dict[str, Any], ledger_sha256: str, state: dict[str
     }
 
 
+def _verify_existing_workspace(
+    workspace: Path,
+    ledger_payload: bytes,
+    expected_state: dict[str, Any],
+    expected_summary: dict[str, Any],
+) -> dict[str, Any] | None:
+    ledger_path = workspace / "execution_ledger.json"
+    state_path = workspace / "workspace_state.json"
+    summary_path = workspace / "workspace.json"
+    expected_paths = (ledger_path, state_path, summary_path)
+    if not workspace.exists():
+        return None
+    if not workspace.is_dir():
+        raise RuntimeError("execution workspace path exists and is not a directory")
+    entries = list(workspace.iterdir())
+    if not entries:
+        return None
+    if not any(path.exists() for path in expected_paths):
+        raise RuntimeError("non-empty unrelated execution workspace exists; refusing to mix state")
+    if not all(path.is_file() for path in expected_paths):
+        raise RuntimeError("partial execution workspace exists; refusing to repair or overwrite it")
+    extra_entries = {entry.name for entry in entries} - {path.name for path in expected_paths}
+    if extra_entries:
+        raise RuntimeError(
+            "execution workspace contains unexpected files; refusing to treat it as untouched: "
+            + ", ".join(sorted(extra_entries))
+        )
+    if ledger_path.read_bytes() != ledger_payload:
+        raise RuntimeError("existing workspace ledger differs from the authoritative execution plan")
+    existing_state = _read_json(state_path)
+    if existing_state != expected_state:
+        raise RuntimeError("existing workspace state is not the untouched selection-only state")
+    existing_summary = _read_json(summary_path)
+    if existing_summary != expected_summary:
+        raise RuntimeError("existing workspace summary differs from the authoritative preparation")
+    return existing_summary
+
+
+def _publish_workspace_atomically(
+    workspace: Path,
+    ledger_payload: bytes,
+    state_payload: bytes,
+    summary_payload: bytes,
+) -> None:
+    parent = workspace.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{workspace.name}.staging-", dir=parent))
+    published = False
+    try:
+        _atomic_write(staging / "execution_ledger.json", ledger_payload)
+        _atomic_write(staging / "workspace_state.json", state_payload)
+        _atomic_write(staging / "workspace.json", summary_payload)
+        if workspace.exists():
+            # An empty destination carries no state; remove it before the single directory publish.
+            # If execution stops here, a later invocation sees no final workspace and can retry.
+            if not workspace.is_dir() or any(workspace.iterdir()):
+                raise RuntimeError("execution workspace changed while staging preparation")
+            workspace.rmdir()
+        os.replace(staging, workspace)
+        published = True
+    finally:
+        if not published and staging.exists():
+            shutil.rmtree(staging, ignore_errors=True)
+
+
 def prepare_workspace(root: Path, workspace: Path) -> dict[str, Any]:
     root = root.resolve()
     workspace = workspace.resolve()
@@ -155,38 +221,11 @@ def prepare_workspace(root: Path, workspace: Path) -> dict[str, Any]:
     summary = _workspace_summary(plan, ledger_sha, state)
     summary_payload = _canonical_bytes(summary)
 
-    ledger_path = workspace / "execution_ledger.json"
-    state_path = workspace / "workspace_state.json"
-    summary_path = workspace / "workspace.json"
-    expected_paths = (ledger_path, state_path, summary_path)
+    existing = _verify_existing_workspace(workspace, ledger_payload, state, summary)
+    if existing is not None:
+        return existing
 
-    if workspace.exists():
-        entries = list(workspace.iterdir())
-        if entries and not any(path.exists() for path in expected_paths):
-            raise RuntimeError("non-empty unrelated execution workspace exists; refusing to mix state")
-        if any(path.exists() for path in expected_paths):
-            if not all(path.is_file() for path in expected_paths):
-                raise RuntimeError("partial execution workspace exists; refusing to repair or overwrite it")
-            extra_entries = {entry.name for entry in entries} - {path.name for path in expected_paths}
-            if extra_entries:
-                raise RuntimeError(
-                    "execution workspace contains unexpected files; refusing to treat it as untouched: "
-                    + ", ".join(sorted(extra_entries))
-                )
-            if ledger_path.read_bytes() != ledger_payload:
-                raise RuntimeError("existing workspace ledger differs from the authoritative execution plan")
-            existing_state = _read_json(state_path)
-            if existing_state != state:
-                raise RuntimeError("existing workspace state is not the untouched selection-only state")
-            existing_summary = _read_json(summary_path)
-            if existing_summary != summary:
-                raise RuntimeError("existing workspace summary differs from the authoritative preparation")
-            return summary
-
-    workspace.mkdir(parents=True, exist_ok=True)
-    _atomic_write(ledger_path, ledger_payload)
-    _atomic_write(state_path, state_payload)
-    _atomic_write(summary_path, summary_payload)
+    _publish_workspace_atomically(workspace, ledger_payload, state_payload, summary_payload)
     return summary
 
 
