@@ -24,7 +24,21 @@ Before any runtime data operation, the runner must verify:
 3. the ground-motion manifest SHA-256 is `0f8056d5b7a3dc0af3a80539a409f2c946b8495e96ba91d540a5d1011e3fc64b`;
 4. all 136 reconstructed processed records match the `processed_sha256` values frozen in the manifest.
 
-Any mismatch is a hard stop. No substitute record, resampling, repair, silent fallback, or post-hoc data replacement is allowed.
+A processed waveform mismatch is a hard stop. No substitute record, resampling, repair, silent fallback, or post-hoc data replacement is allowed.
+
+## Live-source raw-byte drift
+
+The historical `raw_sha256` records the exact source-member bytes observed when the manifest was frozen. A public upstream service can later alter non-numerical ASCII header bytes while serving the same acceleration series. Such upstream byte drift is **not** silently treated as an exact raw match.
+
+If the live `raw_sha256` differs from the historical value, hydration may proceed only when all of the following hold:
+
+- `EVENT_ID`, stream, network, station and location still match the frozen manifest;
+- source units, `NDATA`, sampling interval and usable duration match the frozen values;
+- parsed PGA and source-header PGA remain consistent with the frozen evidence;
+- the explicit accepted CC license family is unchanged;
+- deterministic cm/s² → m/s² normalization reproduces the frozen `processed_sha256` exactly.
+
+The expected and observed raw SHA-256 values are then recorded as provenance drift in the non-waveform hydration audit. If any identity, numerical-header, license, sample, timing or processed-hash check fails, hydration remains `BLOCKED`. This rule does not modify the frozen manifest or scientific source tag.
 
 ## Pilot-only runtime preflight
 
@@ -32,7 +46,8 @@ The preflight performs no confirmatory simulation. It uses one frozen `pilot` wa
 
 The preflight records only runtime/integrity evidence:
 
-- whether all 136 frozen private record hashes were verified;
+- whether all 136 frozen processed waveform hashes were reproduced exactly;
+- any live-source raw-byte provenance drift that passed the stricter identity/header checks above;
 - whether Tier-1 and Tier-2 were available and converged on the pilot fixtures;
 - mean wall-clock time per fixture call;
 - projected sequential runtime for the preregistered Tier-1/Tier-2 call counts;
@@ -42,7 +57,7 @@ It must not emit pilot response vectors, MIDR, PFA, displacement, energy, or any
 
 ## Ephemeral data hydration
 
-`scripts/hydrate_frozen_esm_manifest_v0_8_2.py` is an orchestration utility added after the immutable scientific tag. It is not part of the estimator, optimizer, simulator, objective, selection rule, or statistical analysis. Its output is accepted only if the bytes reproduce the exact `processed_sha256` already frozen at the scientific tag.
+`scripts/hydrate_frozen_esm_manifest_v0_8_2.py` is an orchestration utility added after the immutable scientific tag. It is not part of the estimator, optimizer, simulator, objective, selection rule, or statistical analysis. Its numerical output is accepted only if the bytes reproduce the exact `processed_sha256` already frozen at the scientific tag.
 
 The workflow checks out two worktrees:
 
