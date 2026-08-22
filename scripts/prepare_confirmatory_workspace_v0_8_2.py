@@ -138,6 +138,23 @@ def _atomic_write(path: Path, payload: bytes) -> None:
             os.unlink(temp_name)
 
 
+def _fsync_directory(path: Path) -> None:
+    """Make directory-entry changes durable before reporting workspace publication."""
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        # Windows does not provide the POSIX directory-fsync durability primitive.
+        # The confirmatory runtime is validated on POSIX; keep CLI inspection portable.
+        if os.name == "nt":  # pragma: no cover - Windows compatibility only
+            return
+        raise
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
 def _read_json(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -267,11 +284,15 @@ def _publish_workspace_atomically(
         _atomic_write(staging / "execution_ledger.json", ledger_payload)
         _atomic_write(staging / "workspace_state.json", state_payload)
         _atomic_write(staging / "workspace.json", summary_payload)
+        # File contents are fsynced by _atomic_write; now make the staged names durable.
+        _fsync_directory(staging)
         if workspace.exists():
             if not workspace.is_dir() or any(workspace.iterdir()):
                 raise RuntimeError("execution workspace changed while staging preparation")
             workspace.rmdir()
         os.replace(staging, workspace)
+        # Persist the rename itself before reporting success.
+        _fsync_directory(parent)
         published = True
     finally:
         if not published and staging.exists():
