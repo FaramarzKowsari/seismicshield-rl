@@ -18,39 +18,64 @@ from scripts.finalize_confirmatory_gate_v0_8_2_local import (
     EXPECTED_GATE_VERSION,
     EXPECTED_VALIDATION_ARTIFACT_SHA256,
     EXPECTED_VALIDATION_RUN,
+    FINAL_SOURCE_TAG,
     PARENT_SOURCE_TAG,
 )
 
 
-def test_v0_8_2_gate_is_complete_but_intentionally_disabled_until_retagged():
+def _gate_data(root: Path) -> dict:
+    data = yaml.safe_load(
+        (root / "open_science/confirmatory_gate_v0.8.0.yaml").read_text(encoding="utf-8")
+    )
+    assert isinstance(data, dict)
+    return data
+
+
+def test_v0_8_2_gate_has_only_the_expected_source_state():
     root = Path(__file__).resolve().parents[1]
+    data = _gate_data(root)
     ok, reasons = check_gate(root, root / "open_science/confirmatory_gate_v0.8.0.yaml")
-    # The v0.8.2 execution and analysis contracts are frozen and validated, but this
-    # development/finalization source state must stay fail-closed until an immutable
-    # v0.8.2 tag is created on the exact final gate commit.
-    assert not ok
-    assert "confirmatory_runs_allowed is false." in reasons
+
     assert not any("OSF registration status is not public" in reason for reason in reasons)
     assert not any("identifier does not match preregistration" in reason for reason in reasons)
     assert not any("Frozen numerical config SHA-256" in reason for reason in reasons)
     assert not any("Confirmatory algorithm bundle SHA-256" in reason for reason in reasons)
     assert not any("Confirmatory execution v0.8.2 contract SHA-256" in reason for reason in reasons)
     assert not any("Confirmatory analysis v0.8.2 contract SHA-256" in reason for reason in reasons)
-    assert any(
-        "does not equal HEAD" in reason
-        or ("Required source Git tag" in reason and "does not exist" in reason)
-        for reason in reasons
-    )
+
+    source_tag = data.get("source_git_tag")
+    runs_allowed = data.get("confirmatory_runs_allowed")
+    if (source_tag, runs_allowed) == (PARENT_SOURCE_TAG, False):
+        # Pre-finalization state: execution must remain closed, and the parent immutable
+        # tag must not equal the newer v0.8.2 development/finalization HEAD.
+        assert not ok
+        assert "confirmatory_runs_allowed is false." in reasons
+        assert any(
+            "does not equal HEAD" in reason
+            or ("Required source Git tag" in reason and "does not exist" in reason)
+            for reason in reasons
+        )
+    elif (source_tag, runs_allowed) == (FINAL_SOURCE_TAG, True):
+        # Finalized state: a normal local checkout with tags must PASS. GitHub Actions
+        # uses fetch-depth=1/fetch-tags=false by default, so CI may legitimately see
+        # only the missing-tag blocker even though the tag exists in the remote repo.
+        if not ok:
+            assert reasons == [f"Required source Git tag {FINAL_SOURCE_TAG!r} does not exist."]
+    else:
+        raise AssertionError(
+            "gate source state must be exactly pre-finalization or immutable-final: "
+            f"tag={source_tag!r}, confirmatory_runs_allowed={runs_allowed!r}"
+        )
 
 
 def test_v0_8_2_gate_records_exact_public_validation_evidence():
     root = Path(__file__).resolve().parents[1]
-    data = yaml.safe_load(
-        (root / "open_science/confirmatory_gate_v0.8.0.yaml").read_text(encoding="utf-8")
-    )
+    data = _gate_data(root)
     assert data["version"] == EXPECTED_GATE_VERSION
-    assert data["source_git_tag"] == PARENT_SOURCE_TAG
-    assert data["confirmatory_runs_allowed"] is False
+    assert (data["source_git_tag"], data["confirmatory_runs_allowed"]) in {
+        (PARENT_SOURCE_TAG, False),
+        (FINAL_SOURCE_TAG, True),
+    }
     assert data["confirmatory_execution_contract_sha256"] == EXPECTED_EXECUTION_SHA256
     assert data["confirmatory_analysis_contract_sha256"] == EXPECTED_ANALYSIS_SHA256
     assert data["confirmatory_execution_validation_workflow_run"] == EXPECTED_VALIDATION_RUN
