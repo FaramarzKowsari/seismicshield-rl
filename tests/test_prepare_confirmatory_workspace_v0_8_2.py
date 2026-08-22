@@ -63,3 +63,21 @@ def test_workspace_refuses_partial_existing_state(tmp_path: Path):
     (workspace / "workspace.json").write_text("{}\n", encoding="utf-8")
     with pytest.raises(RuntimeError, match="partial execution workspace"):
         prepare_workspace(root, workspace)
+
+
+def test_workspace_refuses_unrelated_nonempty_directory(tmp_path: Path):
+    root = Path(__file__).resolve().parents[1]
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "unrelated.txt").write_text("do not mix\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="non-empty unrelated execution workspace"):
+        prepare_workspace(root, workspace)
+
+
+def test_workspace_refuses_extra_files_after_preparation(tmp_path: Path):
+    root = Path(__file__).resolve().parents[1]
+    workspace = tmp_path / "workspace"
+    prepare_workspace(root, workspace)
+    (workspace / "unexpected.txt").write_text("unexpected\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="contains unexpected files"):
+        prepare_workspace(root, workspace)
