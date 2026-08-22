@@ -1,5 +1,6 @@
 claim_id,claim_text,status,experiment_id,artifact_path,sha256,notes
 C001,The v0.1 software benchmark is deterministic on the synthetic fixture,exploratory,,,,Must not be reported as seismic efficacy evidence
+C050,The frozen v0.8.2 runtime preflight verified all 136 processed record hashes and converged on all four Tier-1 and four Tier-2 pilot fixtures,verified,confirmatory-runtime-preflight-v0.8.2,results/validation/confirmatory_runtime_preflight_v0.8.2.json,0c8b20e6acd12448046583c2e8fc9a83cd62267b84931f194145a1882354d5b0,Runtime/integrity readiness only; one pilot record read; no confirmatory record or scientific response metric emitted
 C100,MARL improves held-out Pareto hypervolume over required equal-budget baselines,blocked,,,,Requires v0.8 confirmatory run
 C101,The selected MARL policy generalizes across unseen earthquake records,blocked,,,,Requires frozen OOD test manifest
 C102,The selected MARL policy remains competitive under structural-parameter uncertainty,blocked,,,,Requires domain-randomization confirmatory study
