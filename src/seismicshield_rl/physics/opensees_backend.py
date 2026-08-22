@@ -11,13 +11,14 @@ from .base import DamperDesign, GroundMotion, SimulationResult
 class OpenSeesBackend:
     """Tier-2 nonlinear reference backend for the frozen shear-building archetype.
 
-    The structural springs are elastic and the retrofit devices use OpenSees' native
-    ``CoulombDamper`` uniaxial material. UniformExcitation produces relative nodal
-    accelerations; absolute floor acceleration is reconstructed by adding the input
-    ground acceleration at the same analysis time.
+    Structural springs are elastic and retrofit devices use OpenSees' native
+    ``CoulombDamper`` uniaxial material. ``UniformExcitation`` produces relative
+    nodal accelerations; absolute floor acceleration is reconstructed by adding
+    the input ground acceleration at the same analysis time.
 
-    This class is usable only after the dedicated Tier-2 validation workflow passes.
-    The confirmatory gate remains the authority on whether research runs are allowed.
+    Numerical settings are deliberately deterministic and include OpenSees'
+    transient sublevel/substep fallback for nonsmooth Coulomb transitions. A
+    failed world remains a failed world; no method-specific outcome is deleted.
     """
 
     status = "implemented-pending-tier2-validation"
@@ -27,9 +28,11 @@ class OpenSeesBackend:
         building: BuildingConfig,
         *,
         max_substep_s: float = 0.0025,
-        convergence_tolerance: float = 1e-10,
-        convergence_iterations: int = 50,
+        convergence_tolerance: float = 1e-8,
+        convergence_iterations: int = 100,
         damper_capacity_scale: float = 1.0,
+        transient_sublevels: int = 2,
+        transient_substeps: int = 10,
     ):
         try:
             import openseespy.opensees as ops
@@ -43,12 +46,16 @@ class OpenSeesBackend:
             raise ValueError("invalid convergence settings")
         if damper_capacity_scale <= 0:
             raise ValueError("damper_capacity_scale must be positive")
+        if transient_sublevels < 0 or transient_substeps < 2:
+            raise ValueError("invalid transient fallback settings")
         self.ops = ops
         self.building = building
         self.max_substep_s = float(max_substep_s)
         self.convergence_tolerance = float(convergence_tolerance)
         self.convergence_iterations = int(convergence_iterations)
         self.damper_capacity_scale = float(damper_capacity_scale)
+        self.transient_sublevels = int(transient_sublevels)
+        self.transient_substeps = int(transient_substeps)
 
     def _rayleigh_coefficients(self) -> tuple[float, float]:
         n = self.building.n_stories
@@ -67,7 +74,10 @@ class OpenSeesBackend:
         zeta = float(self.building.damping_ratio)
         if math.isclose(w1, w2, rel_tol=0.0, abs_tol=1e-12):
             return 2.0 * zeta * w1, 0.0
-        matrix = np.array([[1.0 / (2.0 * w1), w1 / 2.0], [1.0 / (2.0 * w2), w2 / 2.0]])
+        matrix = np.array(
+            [[1.0 / (2.0 * w1), w1 / 2.0], [1.0 / (2.0 * w2), w2 / 2.0]],
+            dtype=float,
+        )
         alpha, beta = np.linalg.solve(matrix, np.array([zeta, zeta]))
         return float(alpha), float(beta)
 
@@ -92,7 +102,9 @@ class OpenSeesBackend:
             lower, upper = story + 1, story + 2
             elastic_mat = 1000 + story
             elastic_ele = 2000 + story
-            ops.uniaxialMaterial("Elastic", elastic_mat, float(self.building.stiffness_n_per_m[story]))
+            ops.uniaxialMaterial(
+                "Elastic", elastic_mat, float(self.building.stiffness_n_per_m[story])
+            )
             ops.element(
                 "zeroLength",
                 elastic_ele,
@@ -112,7 +124,9 @@ class OpenSeesBackend:
                 try:
                     ops.uniaxialMaterial("CoulombDamper", damper_mat, 0.0, capacity)
                 except Exception as exc:  # OpenSees raises implementation-specific exception types.
-                    raise RuntimeError("OpenSees build does not provide the required CoulombDamper material") from exc
+                    raise RuntimeError(
+                        "OpenSees build does not provide the required CoulombDamper material"
+                    ) from exc
                 ops.element(
                     "zeroLength",
                     damper_ele,
@@ -141,9 +155,26 @@ class OpenSeesBackend:
         ops.numberer("Plain")
         ops.system("BandGeneral")
         ops.test("NormDispIncr", self.convergence_tolerance, self.convergence_iterations, 0)
-        ops.algorithm("Newton")
-        ops.integrator("Newmark", 0.5, 0.25)
-        ops.analysis("Transient")
+        ops.algorithm(
+            "NewtonLineSearch",
+            "-type",
+            "Bisection",
+            "-tol",
+            0.8,
+            "-maxIter",
+            10,
+        )
+        # gamma > 0.5 introduces controlled numerical damping for high-frequency
+        # chatter at ideal Coulomb velocity reversals; beta satisfies the standard
+        # unconditional-stability bound for this gamma.
+        ops.integrator("Newmark", 0.6, 0.3025)
+        ops.analysis(
+            "Transient",
+            "-numSublevels",
+            self.transient_sublevels,
+            "-numSubSteps",
+            self.transient_substeps,
+        )
         return damper_elements
 
     def simulate(self, design: DamperDesign, ground_motion: GroundMotion) -> SimulationResult:
