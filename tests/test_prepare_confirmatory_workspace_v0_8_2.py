@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import json
+import os
 import subprocess
 import sys
 
@@ -58,6 +59,23 @@ def test_workspace_prepare_is_idempotent_only_while_untouched(tmp_path: Path):
     state_path.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     with pytest.raises(RuntimeError, match="untouched selection-only state"):
         prepare_workspace(root, workspace)
+
+
+def test_existing_authoritative_workspace_resyncs_parent_before_success(tmp_path: Path, monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    workspace = tmp_path / "workspace"
+    prepare_workspace(root, workspace)
+    observed: list[Path] = []
+    original = workspace_module._fsync_directory
+
+    def record_fsync(path: Path) -> None:
+        observed.append(path.resolve())
+        original(path)
+
+    monkeypatch.setattr(workspace_module, "_fsync_directory", record_fsync)
+    summary = prepare_workspace(root, workspace)
+    assert summary["status"] == "PREPARED_SELECTION_ONLY"
+    assert workspace.parent.resolve() in observed
 
 
 def test_workspace_refuses_partial_existing_state(tmp_path: Path):
@@ -152,8 +170,6 @@ def test_fresh_workspace_parent_chain_is_persisted_level_by_level(tmp_path: Path
     monkeypatch.setattr(workspace_module, "_fsync_directory", record_fsync)
     prepare_workspace(root, workspace)
 
-    # Creating new-local is persisted by fsync(tmp_path), then creating
-    # confirmatory-v0.8.2 is persisted by fsync(new-local).
     assert tmp_path.resolve() in observed
     assert (tmp_path / "new-local").resolve() in observed
     assert workspace.is_dir()
@@ -173,26 +189,48 @@ def test_preparer_is_directly_executable_in_script_mode():
     assert "Prepare an outcome-free v0.8.2 execution workspace" in result.stdout
 
 
-def test_reviewed_plan_executes_git_blob_against_supplied_root(tmp_path: Path, monkeypatch):
+def test_reviewed_plan_executes_git_blob_against_supplied_root_and_isolates_python(monkeypatch):
     root = Path(__file__).resolve().parents[1]
-    calls: list[tuple[list[str], Path | None]] = []
+    calls: list[tuple[list[str], Path | None, dict[str, str] | None]] = []
     original = workspace_module.subprocess.run
 
     def record_run(args, *pargs, **kwargs):
         cwd = kwargs.get("cwd")
-        calls.append((list(args), Path(cwd).resolve() if cwd is not None else None))
+        env = kwargs.get("env")
+        calls.append(
+            (
+                list(args),
+                Path(cwd).resolve() if cwd is not None else None,
+                dict(env) if env is not None else None,
+            )
+        )
         return original(args, *pargs, **kwargs)
 
     monkeypatch.setattr(workspace_module.subprocess, "run", record_run)
     workspace_module._reviewed_plan(root)
 
     planner_calls = [
-        (args, cwd)
-        for args, cwd in calls
+        (args, cwd, env)
+        for args, cwd, env in calls
         if args and args[0] == sys.executable and "--output" in args
     ]
     assert len(planner_calls) == 1
-    args, cwd = planner_calls[0]
+    args, cwd, env = planner_calls[0]
+    assert args[1] == "-I"
     root_index = args.index("--root") + 1
     assert Path(args[root_index]).resolve() == root.resolve()
     assert cwd == root.resolve()
+    assert env is not None
+    assert "PYTHONPATH" not in env
+    assert "PYTHONHOME" not in env
+    assert "PYTHONSTARTUP" not in env
+    assert "PYTHONUSERBASE" not in env
+    assert env["PYTHONNOUSERSITE"] == "1"
+
+
+def test_default_workspace_is_derived_from_selected_root(tmp_path: Path):
+    selected_root = tmp_path / "alternate-checkout"
+    expected = selected_root / "results/local/confirmatory_v0.8.2/execution_workspace"
+    assert workspace_module._resolve_workspace(selected_root, None) == expected.resolve()
+    explicit = tmp_path / "explicit-workspace"
+    assert workspace_module._resolve_workspace(selected_root, explicit) == explicit.resolve()
