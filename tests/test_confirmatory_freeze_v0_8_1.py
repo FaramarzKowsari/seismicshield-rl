@@ -31,8 +31,8 @@ def test_license_amendment_precedes_osf_and_confirmatory_outcomes():
     assert "U (unknown license)" in text
 
 
-def test_v0_8_1_does_not_open_confirmatory_gate():
+def test_public_osf_registration_is_recorded_but_confirmatory_gate_remains_closed():
     text = GATE.read_text(encoding="utf-8")
-    assert "osf_registration_status: pending" in text
-    assert "osf_registration_persistent_id: null" in text
+    assert "osf_registration_status: public" in text
+    assert "osf_registration_persistent_id: https://doi.org/10.17605/OSF.IO/64DTX" in text
     assert "confirmatory_runs_allowed: false" in text
