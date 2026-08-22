@@ -6,11 +6,13 @@ import yaml
 from scripts.check_confirmatory_gate import check_gate, validate_seed_ledger, validate_source_tag
 
 
-def test_confirmatory_gate_remains_blocked_before_registration():
+def test_confirmatory_gate_remains_blocked_after_public_registration_until_other_prerequisites_are_met():
     root = Path(__file__).resolve().parents[1]
     ok, reasons = check_gate(root, root / "open_science/confirmatory_gate_v0.8.0.yaml")
     assert not ok
-    assert any("OSF registration" in reason for reason in reasons)
+    assert not any("OSF registration status is not public" in reason for reason in reasons)
+    assert not any("identifier does not match preregistration" in reason for reason in reasons)
+    assert any("confirmatory_runs_allowed is false" in reason for reason in reasons)
 
 
 def _mutated_ledger(tmp_path: Path, mutation) -> Path:
