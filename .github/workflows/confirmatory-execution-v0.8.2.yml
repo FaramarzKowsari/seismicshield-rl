@@ -11,6 +11,7 @@ on:
       - "src/seismicshield_rl/confirmatory_analysis_v0_8_2.py"
       - "src/seismicshield_rl/physics/shear_building.py"
       - "scripts/validate_confirmatory_execution_v0_8_2.py"
+      - "scripts/validate_confirmatory_analysis_v0_8_2.py"
       - "tests/test_confirmatory_execution_v0_8_2.py"
       - "tests/test_confirmatory_analysis_v0_8_2.py"
       - ".github/workflows/confirmatory-execution-v0.8.2.yml"
@@ -36,16 +37,18 @@ jobs:
           python -m pytest \
             tests/test_confirmatory_execution_v0_8_2.py \
             tests/test_confirmatory_analysis_v0_8_2.py -q
-      - name: Validate frozen execution contract
+      - name: Validate frozen execution and analysis contracts
         run: |
           mkdir -p results/validation
           python scripts/validate_confirmatory_execution_v0_8_2.py \
             --output results/validation/confirmatory_execution_v0.8.2.json
+          python scripts/validate_confirmatory_analysis_v0_8_2.py \
+            --output results/validation/confirmatory_analysis_v0.8.2.json
       - name: Hash validation evidence
-        run: sha256sum results/validation/confirmatory_execution_v0.8.2.json
+        run: sha256sum results/validation/confirmatory_*_v0.8.2.json
       - name: Upload validation evidence
         uses: actions/upload-artifact@v4
         with:
-          name: confirmatory-execution-v0.8.2-validation
-          path: results/validation/confirmatory_execution_v0.8.2.json
+          name: confirmatory-v0.8.2-validation
+          path: results/validation/confirmatory_*_v0.8.2.json
           if-no-files-found: error
