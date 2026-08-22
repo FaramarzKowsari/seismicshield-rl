@@ -26,6 +26,16 @@ class CandidateRunResult:
     evaluations: int
     designs: list[DamperDesign]
     records: list[ObjectiveRecord]
+    archive_designs: list[DamperDesign] | None = None
+    archive_records: list[ObjectiveRecord] | None = None
+
+    def __post_init__(self) -> None:
+        if len(self.designs) != len(self.records):
+            raise ValueError("candidate designs/records length mismatch")
+        if (self.archive_designs is None) != (self.archive_records is None):
+            raise ValueError("candidate archive designs/records must be provided together")
+        if self.archive_designs is not None and len(self.archive_designs) != len(self.archive_records):
+            raise ValueError("candidate archive designs/records length mismatch")
 
 
 @dataclass(frozen=True)
@@ -102,9 +112,20 @@ class PolicyRunResult:
 
 
 def _design_key(design: DamperDesign) -> tuple:
-    return tuple(design.counts.astype(int).tolist()) + tuple(
-        float(value) for value in design.slip_force_n.tolist()
-    )
+    counts = design.counts.astype(int)
+    slips = np.asarray(design.slip_force_n, dtype=float)
+    canonical_slips = np.where(counts > 0, slips, 0.0)
+    return tuple(counts.tolist()) + tuple(float(value) for value in canonical_slips.tolist())
+
+
+def _archive_candidates(
+    archive: dict[tuple, tuple[DamperDesign, ObjectiveRecord]],
+    designs: Iterable[DamperDesign],
+    records: Iterable[ObjectiveRecord],
+) -> None:
+    """Preserve the first evaluated instance of every physically unique design."""
+    for design, record in zip(designs, records, strict=True):
+        archive.setdefault(_design_key(design), (design, record))
 
 
 def _evaluate(ledger: BudgetLedger, oracle, design: DamperDesign) -> ObjectiveRecord:
@@ -137,8 +158,13 @@ def run_random_candidates(
             best[key] = (design, record)
     ordered = sorted(best.values(), key=lambda item: (item[1].scalar, _design_key(item[0])))[:retain]
     return CandidateRunResult(
-        "random_search", seed, ledger.completed,
-        [item[0] for item in ordered], [item[1] for item in ordered]
+        "random_search",
+        seed,
+        ledger.completed,
+        [item[0] for item in ordered],
+        [item[1] for item in ordered],
+        [item[0] for item in ordered],
+        [item[1] for item in ordered],
     )
 
 
@@ -175,6 +201,12 @@ def run_scalar_ga_candidates(
     population_size = min(int(population_size), int(budget))
     population = np.stack([space.random_genome(rng) for _ in range(population_size)])
     records = [_evaluate(ledger, oracle, space.decode(genome)) for genome in population]
+    archive: dict[tuple, tuple[DamperDesign, ObjectiveRecord]] = {}
+    _archive_candidates(
+        archive,
+        [space.decode(genome) for genome in population],
+        records,
+    )
 
     while ledger.remaining:
         scalar = np.asarray([record.scalar for record in records], dtype=float)
@@ -183,7 +215,9 @@ def run_scalar_ga_candidates(
             left, right = rng.integers(0, population.shape[0], size=2).tolist()
             if scalar[left] != scalar[right]:
                 return int(left if scalar[left] < scalar[right] else right)
-            return int(left if tuple(population[left].tolist()) <= tuple(population[right].tolist()) else right)
+            left_key = _design_key(space.decode(population[left]))
+            right_key = _design_key(space.decode(population[right]))
+            return int(left if left_key <= right_key else right)
 
         target = min(population_size, ledger.remaining)
         children: list[np.ndarray] = []
@@ -197,22 +231,30 @@ def run_scalar_ga_candidates(
                 child = first
             children.append(_mutate_genome(space, child, rng))
         child_array = np.stack(children)
-        child_records = [_evaluate(ledger, oracle, space.decode(genome)) for genome in child_array]
+        child_designs = [space.decode(genome) for genome in child_array]
+        child_records = [_evaluate(ledger, oracle, design) for design in child_designs]
+        _archive_candidates(archive, child_designs, child_records)
         combined = np.vstack([population, child_array])
         combined_records = records + child_records
         order = sorted(
             range(len(combined_records)),
-            key=lambda index: (combined_records[index].scalar, tuple(combined[index].tolist())),
+            key=lambda index: (
+                combined_records[index].scalar,
+                _design_key(space.decode(combined[index])),
+            ),
         )[:population_size]
         population = combined[np.asarray(order, dtype=int)]
         records = [combined_records[index] for index in order]
 
+    archived = list(archive.values())
     return CandidateRunResult(
         "scalar_ga",
         seed,
         ledger.completed,
         [space.decode(genome) for genome in population],
         records,
+        [item[0] for item in archived],
+        [item[1] for item in archived],
     )
 
 
@@ -232,6 +274,12 @@ def run_nsga2_candidates(
     population_size = min(int(population_size), int(budget))
     population = np.stack([space.random_genome(rng) for _ in range(population_size)])
     records = [_evaluate(ledger, oracle, space.decode(genome)) for genome in population]
+    archive: dict[tuple, tuple[DamperDesign, ObjectiveRecord]] = {}
+    _archive_candidates(
+        archive,
+        [space.decode(genome) for genome in population],
+        records,
+    )
 
     while ledger.remaining:
         vectors = np.stack([record.vector for record in records])
@@ -257,7 +305,9 @@ def run_nsga2_candidates(
                 child = first
             children.append(_mutate_genome(space, child, rng))
         child_array = np.stack(children)
-        child_records = [_evaluate(ledger, oracle, space.decode(genome)) for genome in child_array]
+        child_designs = [space.decode(genome) for genome in child_array]
+        child_records = [_evaluate(ledger, oracle, design) for design in child_designs]
+        _archive_candidates(archive, child_designs, child_records)
         combined = np.vstack([population, child_array])
         combined_records = records + child_records
         vectors = np.stack([record.vector for record in combined_records])
@@ -265,45 +315,72 @@ def run_nsga2_candidates(
         population = combined[keep]
         records = [combined_records[index] for index in keep.tolist()]
 
+    archived = list(archive.values())
     return CandidateRunResult(
-        "nsga2", seed, ledger.completed,
-        [space.decode(genome) for genome in population], records
+        "nsga2",
+        seed,
+        ledger.completed,
+        [space.decode(genome) for genome in population],
+        records,
+        [item[0] for item in archived],
+        [item[1] for item in archived],
     )
 
 
-def _candidate_pool(result: CandidateRunResult, limit: int) -> list[DamperDesign]:
-    if limit <= 0:
-        raise ValueError("candidate-pool limit must be positive")
-    indices = list(range(len(result.designs)))
-    if result.method == "nsga2":
-        vectors = np.stack([record.vector for record in result.records])
+def _ordered_candidate_indices(
+    method: str,
+    designs: list[DamperDesign],
+    records: list[ObjectiveRecord],
+) -> list[int]:
+    indices = list(range(len(designs)))
+    if method == "nsga2":
+        vectors = np.stack([record.vector for record in records])
         rank, crowding, _ = _rank_and_crowding(vectors)
         indices.sort(
             key=lambda index: (
                 int(rank[index]),
                 -float(crowding[index]),
-                float(result.records[index].scalar),
-                _design_key(result.designs[index]),
+                float(records[index].scalar),
+                _design_key(designs[index]),
             )
         )
     else:
         indices.sort(
             key=lambda index: (
-                float(result.records[index].scalar),
-                _design_key(result.designs[index]),
+                float(records[index].scalar),
+                _design_key(designs[index]),
             )
         )
+    return indices
+
+
+def _candidate_pool(result: CandidateRunResult, limit: int) -> list[DamperDesign]:
+    if limit <= 0:
+        raise ValueError("candidate-pool limit must be positive")
+
     selected: list[DamperDesign] = []
     seen: set[tuple] = set()
-    for index in indices:
-        design = result.designs[index]
-        key = _design_key(design)
-        if key in seen:
-            continue
-        seen.add(key)
-        selected.append(design)
-        if len(selected) >= limit:
-            break
+
+    def extend(designs: list[DamperDesign], records: list[ObjectiveRecord]) -> None:
+        for index in _ordered_candidate_indices(result.method, designs, records):
+            design = designs[index]
+            key = _design_key(design)
+            if key in seen:
+                continue
+            seen.add(key)
+            selected.append(design)
+            if len(selected) >= limit:
+                return
+
+    extend(result.designs, result.records)
+    if len(selected) < limit and result.archive_designs is not None:
+        extend(result.archive_designs, result.archive_records or [])
+
+    if len(selected) != limit:
+        raise RuntimeError(
+            "candidate optimizer cannot satisfy the frozen validation pool: "
+            f"required {limit} physically unique designs, found {len(selected)}"
+        )
     return selected
 
 
@@ -314,8 +391,6 @@ def select_candidate_on_validation(
     pool_size: int = 32,
 ) -> CandidateSelection:
     pool = _candidate_pool(result, pool_size)
-    if not pool:
-        raise RuntimeError("candidate optimizer produced no validation candidates")
     scored: list[tuple[DamperDesign, ObjectiveRecord]] = []
     for design in pool:
         scored.append((design, panel.mean_record(design)))
@@ -335,8 +410,8 @@ def select_candidate_on_validation(
         structural_state_id=panel.structural_state_id,
         design=design,
         validation_record=record,
-        validation_calls=len(pool) * len(panel.evaluators),
-        pool_size=len(pool),
+        validation_calls=pool_size * len(panel.evaluators),
+        pool_size=pool_size,
     )
 
 
