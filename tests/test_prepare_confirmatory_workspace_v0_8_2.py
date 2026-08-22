@@ -3,6 +3,7 @@ from pathlib import Path
 import json
 import pytest
 
+import scripts.prepare_confirmatory_workspace_v0_8_2 as workspace_module
 from scripts.prepare_confirmatory_workspace_v0_8_2 import (
     CONFIRMATORY_STATUS,
     SELECTION_STATUS,
@@ -81,3 +82,35 @@ def test_workspace_refuses_extra_files_after_preparation(tmp_path: Path):
     (workspace / "unexpected.txt").write_text("unexpected\n", encoding="utf-8")
     with pytest.raises(RuntimeError, match="contains unexpected files"):
         prepare_workspace(root, workspace)
+
+
+def test_workspace_publication_failure_never_exposes_partial_final_state(
+    tmp_path: Path, monkeypatch
+):
+    root = Path(__file__).resolve().parents[1]
+    workspace = tmp_path / "workspace"
+    original = workspace_module._atomic_write
+    calls = 0
+
+    def fail_on_second_write(path: Path, payload: bytes) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("simulated infrastructure interruption")
+        original(path, payload)
+
+    monkeypatch.setattr(workspace_module, "_atomic_write", fail_on_second_write)
+    with pytest.raises(OSError, match="simulated infrastructure interruption"):
+        prepare_workspace(root, workspace)
+
+    assert not workspace.exists()
+    assert not list(tmp_path.glob(".workspace.staging-*"))
+
+    monkeypatch.setattr(workspace_module, "_atomic_write", original)
+    summary = prepare_workspace(root, workspace)
+    assert summary["status"] == "PREPARED_SELECTION_ONLY"
+    assert sorted(path.name for path in workspace.iterdir()) == [
+        "execution_ledger.json",
+        "workspace.json",
+        "workspace_state.json",
+    ]
