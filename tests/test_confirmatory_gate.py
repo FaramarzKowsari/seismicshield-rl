@@ -56,11 +56,19 @@ def test_v0_8_2_gate_has_only_the_expected_source_state():
             for reason in reasons
         )
     elif (source_tag, runs_allowed) == (FINAL_SOURCE_TAG, True):
-        # Finalized state: a normal local checkout with tags must PASS. GitHub Actions
-        # uses fetch-depth=1/fetch-tags=false by default, so CI may legitimately see
-        # only the missing-tag blocker even though the tag exists in the remote repo.
+        # The finalized gate passes only at the immutable source commit itself. A shallow
+        # development checkout may not have the tag, while a full development checkout
+        # must fail closed because HEAD is newer than the immutable tag. Either state is
+        # acceptable here only when source identity is the sole blocker.
         if not ok:
-            assert reasons == [f"Required source Git tag {FINAL_SOURCE_TAG!r} does not exist."]
+            assert len(reasons) == 1
+            reason = reasons[0]
+            missing_tag = f"Required source Git tag {FINAL_SOURCE_TAG!r} does not exist."
+            development_head = (
+                reason.startswith(f"Source Git tag {FINAL_SOURCE_TAG!r} resolves to ")
+                and reason.endswith("which does not equal HEAD.")
+            )
+            assert reason == missing_tag or development_head
     else:
         raise AssertionError(
             "gate source state must be exactly pre-finalization or immutable-final: "
