@@ -20,7 +20,11 @@ backend:
   system: BandGeneral
   rayleigh_damping: mass_plus_current_elastic_stiffness
 validation_fixture:
-  ground_motion: data/fixtures/synthetic_pulse.csv
+  ground_motion: data/fixtures/tier2_validation_sine.csv
+  analytic_definition: 2.0*sin(2*pi*1.2*t)*exp(-0.3*t)
+  duration_s: 2.0
+  sampling_interval_s: 0.01
+  initial_acceleration_mps2: 0.0
   structural_contract: open_science/structural_world_freeze_v0.8.1.yaml
   building_height_stories: 3
   realization: nominal
@@ -48,5 +52,6 @@ rules:
   tier2_primary_claims_require_validation_pass: true
 notes:
   - UniformExcitation returns relative nodal response; absolute floor acceleration is reconstructed by adding the ground acceleration.
-  - This validation uses the public synthetic software fixture only and therefore cannot reveal a confirmatory outcome.
-  - The first public-synthetic preconfirmatory diagnostic exposed non-convergence of ideal Coulomb friction at the first 0.0025 s step under plain Newton/Newmark(0.5,0.25). Before any confirmatory waveform was read, the solver was frozen to NewtonLineSearch with documented substep fallback and numerically damped Newmark(0.6,0.3025). Acceptance thresholds were not relaxed.
+  - This validation uses a public analytic software fixture only and therefore cannot reveal a confirmatory outcome.
+  - The original synthetic_pulse.csv software fixture starts with nonzero acceleration. With an ideal Coulomb law, zero initial relative velocity plus nonzero initial forcing creates a nondifferentiable first-step diagnostic. Before any confirmatory waveform was read, Tier-2 validation was moved to the explicitly defined analytic zero-start fixture above. Acceptance thresholds were not relaxed.
+  - The earlier public-synthetic diagnostic also motivated freezing NewtonLineSearch with documented substep fallback and numerically damped Newmark(0.6,0.3025), again before any confirmatory waveform was read and without relaxing acceptance thresholds.
