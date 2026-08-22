@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Prepare an outcome-free v0.8.2 execution workspace; never execute a scientific shard.
 
-This orchestration layer materializes the reviewed execution ledger and creates local state for
-selection work while keeping every Tier-2 confirmatory shard locked. It has deliberately no
-command that can unlock confirmatory data hydration or execute a structural-response simulation.
+The workspace materializes the reviewed execution ledger and creates local state for selection
+work while every Tier-2 confirmatory shard remains locked. This module deliberately has no
+command that can unlock confirmatory hydration or execute a structural-response simulation.
 """
 from __future__ import annotations
 
@@ -49,6 +49,7 @@ def _git_text(root: Path, *args: str) -> str:
 
 
 def _validate_planner_source(root: Path) -> None:
+    """Require both committed and working planner bytes to equal the reviewed Git blob."""
     try:
         committed = _git_text(root, "rev-parse", f"HEAD:{PLANNER_RELATIVE}")
         working = _git_text(root, "hash-object", PLANNER_RELATIVE)
@@ -67,7 +68,7 @@ def _validate_planner_source(root: Path) -> None:
 
 
 def _reviewed_plan(root: Path) -> dict[str, Any]:
-    """Execute the exact reviewed planner blob without importing working-tree planner code."""
+    """Execute exact reviewed planner bytes from Git, never imported working-tree code."""
     _validate_planner_source(root)
     blob = subprocess.run(
         ["git", "cat-file", "blob", EXPECTED_PLANNER_GIT_BLOB],
@@ -78,8 +79,6 @@ def _reviewed_plan(root: Path) -> dict[str, Any]:
     if blob.returncode:
         detail = blob.stderr.decode("utf-8", errors="replace").strip()
         raise RuntimeError(f"cannot read reviewed planner blob from Git object database: {detail}")
-    if _git_text(root, "hash-object", "--stdin") if False else "":  # pragma: no cover
-        raise AssertionError("unreachable")
 
     with tempfile.TemporaryDirectory(prefix="seismicshield-reviewed-planner-") as temp_name:
         temp_dir = Path(temp_name)
@@ -108,6 +107,8 @@ def _reviewed_plan(root: Path) -> dict[str, Any]:
         if not output.is_file():
             raise RuntimeError("reviewed execution planner returned success without a ledger")
         value = json.loads(output.read_text(encoding="utf-8"))
+
+    # Detect a concurrent working-tree change between authentication and planner completion.
     _validate_planner_source(root)
     if not isinstance(value, dict):
         raise RuntimeError("reviewed execution planner output is not a JSON object")
@@ -159,12 +160,10 @@ def _expected_state(plan: dict[str, Any], ledger_sha256: str) -> dict[str, Any]:
             raise ValueError(f"duplicate execution shard id {shard_id!r}")
         phase = str(shard["phase"])
         if phase.startswith("tier1_"):
-            status = SELECTION_STATUS
-            stage = "selection"
+            status, stage = SELECTION_STATUS, "selection"
             selection += 1
         elif phase.startswith("tier2_confirmatory_"):
-            status = CONFIRMATORY_STATUS
-            stage = "confirmatory"
+            status, stage = CONFIRMATORY_STATUS, "confirmatory"
             confirmatory += 1
         else:
             raise ValueError(f"unexpected execution phase {phase!r}")
@@ -293,7 +292,6 @@ def prepare_workspace(root: Path, workspace: Path) -> dict[str, Any]:
     existing = _verify_existing_workspace(workspace, ledger_payload, state, summary)
     if existing is not None:
         return existing
-
     _publish_workspace_atomically(workspace, ledger_payload, state_payload, summary_payload)
     return summary
 
