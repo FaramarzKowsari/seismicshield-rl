@@ -1,13 +1,26 @@
 cff-version: 1.2.0
-message: "If you use this research software, please cite the repository release."
-title: "SeismicShield-RL: Multi-Agent Reinforcement Learning for Seismic Damper Co-Design"
+message: "If you use this research software, please cite the Final Infrastructure Release. The OSF DOI identifies the preregistered protocol, not the software release."
+title: "SeismicShield-RL: Preregistered Reproducible Infrastructure for Seismic Damper Co-Design Benchmarking"
 type: software
 authors:
   - family-names: Kowsari
     given-names: Faramarz
     orcid: "https://orcid.org/0000-0003-1692-0453"
-version: 0.1.0
-date-released: 2026-08-16
+version: 0.8.2
+date-released: 2026-08-23
 repository-code: "https://github.com/FaramarzKowsari/seismicshield-rl"
-url: "https://faramarzkowsari.github.io/seismicshield-rl/"
+url: "https://github.com/FaramarzKowsari/seismicshield-rl"
 license: MIT
+keywords:
+  - seismic engineering
+  - reinforcement learning
+  - multi-agent reinforcement learning
+  - multi-objective optimization
+  - friction dampers
+  - OpenSeesPy
+  - reproducible research
+  - preregistration
+identifiers:
+  - type: doi
+    value: "10.17605/OSF.IO/64DTX"
+    description: "Preregistered confirmatory protocol on OSF; this DOI does not identify the software release."

@@ -1,0 +1,40 @@
+name: Publish Final Infrastructure Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - README.md
+      - CITATION.cff
+      - RELEASE_NOTES_v0.8.2.md
+      - paper/TECHNICAL_REPORT_FINAL_INFRASTRUCTURE_RELEASE.md
+      - .github/workflows/final-infrastructure-release.yml
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create idempotent final infrastructure release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v0.8.2-infrastructure-final
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; leaving it unchanged."
+            exit 0
+          fi
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "SeismicShield-RL v0.8.2 — Final Infrastructure Release" \
+            --notes-file RELEASE_NOTES_v0.8.2.md
