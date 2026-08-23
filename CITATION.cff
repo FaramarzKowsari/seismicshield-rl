@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use this research software, please cite the Final Infrastructure Release. The OSF DOI identifies the preregistered protocol, not the software release."
+message: "If you use this research software, please cite the Final Infrastructure Release. The OSF DOI 10.17605/OSF.IO/64DTX identifies the preregistered protocol, not the software release."
 title: "SeismicShield-RL: Preregistered Reproducible Infrastructure for Seismic Damper Co-Design Benchmarking"
 type: software
 authors:
@@ -11,6 +11,7 @@ date-released: 2026-08-23
 repository-code: "https://github.com/FaramarzKowsari/seismicshield-rl"
 url: "https://github.com/FaramarzKowsari/seismicshield-rl"
 license: MIT
+abstract: "Final infrastructure release of a preregistered reproducible benchmark platform. The full Stage-A and confirmatory Tier-2 computational campaigns were deferred and no confirmatory algorithm-efficacy result is claimed."
 keywords:
   - seismic engineering
   - reinforcement learning
@@ -20,7 +21,3 @@ keywords:
   - OpenSeesPy
   - reproducible research
   - preregistration
-identifiers:
-  - type: doi
-    value: "10.17605/OSF.IO/64DTX"
-    description: "Preregistered confirmatory protocol on OSF; this DOI does not identify the software release."
