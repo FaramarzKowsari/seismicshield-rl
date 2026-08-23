@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">SeismicShield-RL project hero</title>
+  <desc id="desc">A stylized multi-story building with friction dampers, an earthquake waveform, an AI network, and a research shield.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b2938"/><stop offset="0.55" stop-color="#081a2a"/><stop offset="1" stop-color="#06131f"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14374a" stop-opacity=".96"/><stop offset="1" stop-color="#0d2534" stop-opacity=".96"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse"><path d="M80 0H0V80" fill="none" stroke="#4ea7b4" stroke-opacity=".10" stroke-width="1"/></pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <rect width="1600" height="900" fill="url(#grid)"/>
+  <rect x="20" y="20" width="1560" height="860" rx="28" fill="none" stroke="#54c6ca" stroke-opacity=".45" stroke-width="2"/>
+
+  <g font-family="Inter,Segoe UI,Arial,sans-serif">
+    <text x="95" y="185" font-size="78" font-weight="700" fill="#f2fafc">SeismicShield-RL</text>
+    <text x="100" y="242" font-size="30" fill="#95e1e1">Preregistered Reproducible Infrastructure</text>
+    <text x="100" y="290" font-size="30" fill="#dce8ec">for seismic friction-damper co-design benchmarking</text>
+
+    <g font-size="20" font-weight="700" fill="#f4fbfb">
+      <rect x="100" y="345" width="305" height="40" rx="18" fill="#135865" stroke="#78dad8" stroke-opacity=".7"/><text x="116" y="372">Reinforcement Learning</text>
+      <rect x="100" y="405" width="355" height="40" rx="18" fill="#135865" stroke="#78dad8" stroke-opacity=".7"/><text x="116" y="432">Multi-objective Optimization</text>
+      <rect x="100" y="465" width="250" height="40" rx="18" fill="#135865" stroke="#78dad8" stroke-opacity=".7"/><text x="116" y="492">OpenSeesPy Tier-2</text>
+      <rect x="100" y="525" width="255" height="40" rx="18" fill="#55421c" stroke="#ffc06d" stroke-opacity=".75"/><text x="116" y="552">Open Science • DOI</text>
+    </g>
+
+    <text x="100" y="790" font-size="22" fill="#ffc47a">FINAL INFRASTRUCTURE RELEASE • full confirmatory run deferred</text>
+    <text x="100" y="835" font-size="22" fill="#b4cbd3">Research software • reproducibility infrastructure • no seismic-efficacy claim</text>
+  </g>
+
+  <g stroke="#54d9d6" stroke-opacity=".45" stroke-width="3" fill="none">
+    <path d="M540 300L680 180L820 230L900 370L830 510L620 430L540 300M680 180L740 340L900 370M820 230L740 340L830 510M620 430L740 340"/>
+  </g>
+  <g fill="#5de7df" stroke="#d2fff9" stroke-width="2">
+    <circle cx="540" cy="300" r="8"/><circle cx="680" cy="180" r="8"/><circle cx="820" cy="230" r="8"/><circle cx="740" cy="340" r="11"/><circle cx="900" cy="370" r="11"/><circle cx="620" cy="430" r="8"/><circle cx="830" cy="510" r="8"/>
+  </g>
+
+  <g transform="translate(860 155)">
+    <path d="M0-55L48-30L40 28L0 60L-40 28L-48-30Z" fill="#0c3e4d" stroke="#60e7dd" stroke-width="2"/>
+    <path d="M-20 2L-4 18L26-18" fill="none" stroke="#ffa447" stroke-width="8" stroke-linecap="square"/>
+  </g>
+
+  <g>
+    <rect x="1040" y="146" width="390" height="504" rx="18" fill="url(#glass)" stroke="#59d1d6" stroke-width="3"/>
+    <g stroke="#76e1e1" stroke-opacity=".45" stroke-width="2">
+      <path d="M1054 182H1416M1054 218H1416M1054 254H1416M1054 290H1416M1054 326H1416M1054 362H1416M1054 398H1416M1054 434H1416M1054 470H1416M1054 506H1416M1054 542H1416M1054 578H1416M1054 614H1416"/>
+      <path d="M1115 156V640M1195 156V640M1275 156V640M1355 156V640"/>
+    </g>
+    <g stroke="#ff9f3e" stroke-width="8">
+      <path d="M1085 219L1165 253M1165 219L1085 253M1085 327L1165 361M1165 327L1085 361M1085 435L1165 469M1165 435L1085 469M1085 543L1165 577M1165 543L1085 577"/>
+    </g>
+    <rect x="990" y="655" width="490" height="25" rx="10" fill="#415f6d"/>
+    <g fill="#b77935"><circle cx="1020" cy="694" r="10"/><circle cx="1058" cy="694" r="10"/><circle cx="1096" cy="694" r="10"/><circle cx="1134" cy="694" r="10"/><circle cx="1172" cy="694" r="10"/><circle cx="1210" cy="694" r="10"/><circle cx="1248" cy="694" r="10"/><circle cx="1286" cy="694" r="10"/><circle cx="1324" cy="694" r="10"/><circle cx="1362" cy="694" r="10"/><circle cx="1400" cy="694" r="10"/><circle cx="1438" cy="694" r="10"/></g>
+    <path d="M940 711H1520" stroke="#8bbec7" stroke-width="3"/>
+  </g>
+
+  <path d="M0 644L25 632L53 650L85 608L112 617L140 650L166 652L201 619L233 618L260 653L302 652L347 610L375 625L414 620L451 657L478 646L508 601L540 618L579 662L620 605L650 599L690 674L713 651L748 650L772 570L807 639L833 625L848 697L884 652L906 655L925 557L949 620L971 677L1002 641L1034 616L1070 590L1109 660L1137 653L1175 647L1192 585L1212 648L1251 656L1284 619L1318 650L1343 626L1370 657L1401 647L1449 603L1485 622L1520 655L1556 646L1600 626" fill="none" stroke="#ff9f3e" stroke-width="5" filter="url(#glow)"/>
+</svg>
