@@ -8,7 +8,7 @@
 <a href="https://github.com/FaramarzKowsari/seismicshield-rl/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/FaramarzKowsari/seismicshield-rl/ci.yml?branch=main&label=CI"></a>
 <a href="https://doi.org/10.17605/OSF.IO/64DTX"><img alt="OSF preregistration" src="https://img.shields.io/badge/OSF-preregistered-2CB9A8"></a>
 <a href="https://doi.org/10.5281/zenodo.22067278"><img alt="Zenodo version DOI" src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22067278-blue"></a>
-<a href="https://doi.org/10.5281/zenodo.22067277"><img alt="Zenodo concept DOI" src="https://zenodo.org/badge/1337744634.svg"></a>
+<a href="https://doi.org/10.5281/zenodo.22067277"><img alt="Zenodo concept DOI" src="https://img.shields.io/badge/concept%20DOI-10.5281%2Fzenodo.22067277-blue"></a>
 <a href="docs/index.html"><img alt="Multilingual site source" src="https://img.shields.io/badge/multilingual%20site-EN%20%7C%20TR%20%7C%20ES-168D73"></a>
 <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
