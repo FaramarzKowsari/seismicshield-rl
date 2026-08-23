@@ -20,9 +20,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Prepare static site and Search Console verification
+        shell: bash
+        run: |
+          rm -rf _site
+          cp -a docs _site
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("_site/index.html")
+          tag = '<meta name="google-site-verification" content="9obptT9ArJwzfNiz0vlAKtZLMSA596JKgDx_79VRLO0" />'
+          text = path.read_text(encoding="utf-8")
+          if tag not in text:
+              marker = '<meta name="theme-color" content="#081a2a">'
+              if marker not in text:
+                  raise SystemExit("Expected homepage head marker not found; refusing to publish")
+              text = text.replace(marker, tag + "\n  " + marker, 1)
+              path.write_text(text, encoding="utf-8")
+          PY
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: docs
+          path: _site
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v5
