@@ -9,6 +9,7 @@
   <img alt="Scientific study" src="https://img.shields.io/badge/full%20confirmatory%20run-deferred-B7791F.svg">
   <img alt="Python" src="https://img.shields.io/badge/python-3.11%2B-3670A0.svg">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-168D73.svg">
+  <a href="https://doi.org/10.5281/zenodo.22067277"><img alt="Zenodo DOI" src="https://zenodo.org/badge/1337744634.svg"></a>
 </p>
 
 ## Final project status
@@ -20,6 +21,8 @@ This is an intentional, transparent stopping point based on measured computation
 > **No paper-level confirmatory performance result has been generated or inspected. No claim is made that MAPPO, PPO, IPPO, NSGA-II, scalar GA, or random search is superior on the preregistered confirmatory benchmark.**
 
 The preregistered protocol remains preserved at OSF DOI [`10.17605/OSF.IO/64DTX`](https://doi.org/10.17605/OSF.IO/64DTX). The immutable scientific source remains Git tag `confirmatory-v0.8.2-final` at commit `cecd3b6c27b5deb6cb6be7ddc478cfc407a45644`.
+
+The archived Final Infrastructure Release is preserved on Zenodo at version DOI [`10.5281/zenodo.22067278`](https://doi.org/10.5281/zenodo.22067278). The software concept DOI, which represents SeismicShield-RL across versions, is [`10.5281/zenodo.22067277`](https://doi.org/10.5281/zenodo.22067277).
 
 ## What was completed
 
@@ -188,9 +191,13 @@ Accordingly, the blocked efficacy claims in `paper/EVIDENCE_LEDGER.csv` remain b
 
 ## How to cite
 
-For the preregistered protocol, cite OSF DOI [`10.17605/OSF.IO/64DTX`](https://doi.org/10.17605/OSF.IO/64DTX).
+For the **exact SeismicShield-RL v0.8.2 Final Infrastructure Release**, cite Zenodo DOI [`10.5281/zenodo.22067278`](https://doi.org/10.5281/zenodo.22067278).
 
-For the software/infrastructure release, use `CITATION.cff` and the GitHub/Zenodo release metadata when the release DOI is available. The OSF DOI identifies the preregistration and must not be represented as the software DOI.
+For the **SeismicShield-RL software family across versions**, use the Zenodo concept DOI [`10.5281/zenodo.22067277`](https://doi.org/10.5281/zenodo.22067277).
+
+For the **preregistered protocol**, cite OSF DOI [`10.17605/OSF.IO/64DTX`](https://doi.org/10.17605/OSF.IO/64DTX).
+
+`CITATION.cff` records the exact release DOI. The OSF DOI identifies the preregistration and must not be represented as the software DOI.
 
 ## Scope and safety
 
@@ -203,6 +210,8 @@ SeismicShield-RL is a research and reproducibility platform. It does not certify
 - ORCID: https://orcid.org/0000-0003-1692-0453
 - GitHub: https://github.com/FaramarzKowsari
 - Project: https://github.com/FaramarzKowsari/seismicshield-rl
+- Zenodo version DOI: https://doi.org/10.5281/zenodo.22067278
+- Zenodo concept DOI: https://doi.org/10.5281/zenodo.22067277
 
 ## License
 
