@@ -9,7 +9,7 @@
 <a href="https://doi.org/10.17605/OSF.IO/64DTX"><img alt="OSF preregistration" src="https://img.shields.io/badge/OSF-preregistered-2CB9A8"></a>
 <a href="https://doi.org/10.5281/zenodo.22067278"><img alt="Zenodo version DOI" src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22067278-blue"></a>
 <a href="https://doi.org/10.5281/zenodo.22067277"><img alt="Zenodo concept DOI" src="https://zenodo.org/badge/1337744634.svg"></a>
-<a href="https://faramarzkowsari.github.io/seismicshield-rl/"><img alt="GitHub Pages" src="https://img.shields.io/badge/GitHub%20Pages-live-168D73"></a>
+<a href="docs/index.html"><img alt="Multilingual site source" src="https://img.shields.io/badge/multilingual%20site-EN%20%7C%20TR%20%7C%20ES-168D73"></a>
 <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
@@ -24,7 +24,7 @@
 
 **SeismicShield-RL** is a preregistered research-software and reproducibility platform for benchmarking reinforcement learning, multi-agent reinforcement learning, and multi-objective optimization in seismic friction-damper co-design. The project separates exploratory software validation, training/validation model selection, and confirmatory evaluation through frozen contracts, immutable scientific source, cryptographic provenance, deterministic execution planning, and leakage-resistant information boundaries.
 
-The project is now closed as **SeismicShield-RL v0.8.2 — Final Infrastructure Release**. The infrastructure, preregistration, manifests, source freeze, runtime preflight, execution planner, evidence ledger, and selection-only workspace were completed and preserved. The resource-intensive full Stage-A campaign and the subsequent confirmatory Tier-2 campaign were **not executed** because the measured compute requirement exceeded the intended no-cost execution envelope.
+The project is closed as **SeismicShield-RL v0.8.2 — Final Infrastructure Release**. The infrastructure, preregistration, manifests, source freeze, runtime preflight, execution planner, evidence ledger, and selection-only workspace were completed and preserved. The full Stage-A campaign and the subsequent confirmatory Tier-2 campaign were **not executed** because the measured compute requirement exceeded the intended no-cost execution envelope.
 
 > **No paper-level confirmatory performance result has been generated or inspected. No claim is made that MAPPO, PPO, IPPO, NSGA-II, scalar GA, or random search is superior on the preregistered confirmatory benchmark.**
 
@@ -36,62 +36,37 @@ The project is now closed as **SeismicShield-RL v0.8.2 — Final Infrastructure 
 - Immutable scientific tag: `confirmatory-v0.8.2-final`
 - Immutable scientific commit: `cecd3b6c27b5deb6cb6be7ddc478cfc407a45644`
 - Final technical report: [`paper/TECHNICAL_REPORT_FINAL_INFRASTRUCTURE_RELEASE.md`](paper/TECHNICAL_REPORT_FINAL_INFRASTRUCTURE_RELEASE.md)
-- Runtime evidence: [`results/validation/confirmatory_runtime_preflight_v0.8.2.json`](results/validation/confirmatory_runtime_preflight_v0.8.2.json)
+- Multilingual landing-page source: [`docs/index.html`](docs/index.html)
 
-## What was completed
+## Completed infrastructure
 
-- Frozen preregistered confirmatory protocol and fail-closed gate
-- Explicit-CC ESM manifest: **34 events × 4 records = 136 records**
+- **34 events × 4 records = 136** explicit-CC ESM records
 - Frozen partitions: **52 training / 20 validation / 16 pilot / 48 confirmatory**
-- Frozen structural-world design: **16 structural states** across 3-, 6-, 10-, and 20-story buildings
-- Fixed objectives, algorithms, budgets, seeds, checkpoint rules, and statistical-analysis rules
+- **16 structural states** across 3-, 6-, 10-, and 20-story buildings
 - Tier-1 research surrogate and OpenSeesPy Tier-2 backend
 - Independent reproduction of all **136 processed-waveform SHA-256 values**
 - Successful runtime convergence on **4 Tier-1 + 4 Tier-2 pilot fixtures**
-- Deterministic execution plan containing **475 atomic shards / 2,820,160 structural-response calls**
-- Selection-only execution workspace exposing 424 Stage-A shards while keeping all 51 Tier-2 confirmatory shards locked
+- Deterministic plan: **475 atomic shards / 2,820,160 structural-response calls**
+- Selection-only workspace keeping all **51 Tier-2 confirmatory shards locked**
 - CI, tests, evidence ledger, audit contracts, and SHA-256 provenance
 
 ## Measured computational boundary
 
 | Stage | Atomic shards | Structural-response calls | Projected sequential simulation time |
 |---|---:|---:|---:|
-| Tier-1 feature precompute | 16 | 832 | included in Stage A |
-| Tier-1 non-policy train + validation | 384 | 1,474,560 | included in Stage A |
-| Tier-1 learned train + validation | 24 | 1,305,600 | included in Stage A |
-| **Stage A Tier-1 total** | **424** | **2,780,992** | **~1,026.68 h** |
-| Tier-2 confirmatory seeded | 48 | 36,864 | included below |
-| Tier-2 support | 3 | 2,304 | included below |
-| **Tier-2 total** | **51** | **39,168** | **~21.64 h** |
+| **Stage A Tier-1** | **424** | **2,780,992** | **~1,026.68 h** |
+| **Tier-2 confirmatory** | **51** | **39,168** | **~21.64 h** |
 | **Grand total** | **475** | **2,820,160** | — |
 
 Runtime preflight measured approximately **1.329 s per Tier-1 call** and **1.989 s per Tier-2 call** on the tested environment. Learned Stage-A shards are scientifically atomic under the frozen implementation; splitting them merely to fit hosted-CI limits would change the preregistered execution semantics.
 
 ## Benchmark design
 
-The deferred registered study asks whether multi-agent reinforcement learning can jointly optimize friction-damper **count**, **inter-story distribution**, and **slip-force level** while improving the out-of-sample Pareto trade-off among retrofit cost, maximum inter-story drift ratio (MIDR), and peak floor acceleration (PFA) under unseen earthquakes and structural uncertainty.
+The deferred study asks whether multi-agent reinforcement learning can jointly optimize friction-damper **count**, **inter-story distribution**, and **slip-force level** while improving the out-of-sample Pareto trade-off among retrofit cost, maximum inter-story drift ratio (MIDR), and peak floor acceleration (PFA) under unseen earthquakes and structural uncertainty.
 
-Design variables per story:
-
-- damper count: `0…4`
-- slip-force grid: `0, 50,000, 100,000, 200,000, 350,000 N`
-
-Frozen stochastic algorithm ladder:
-
-1. random search
-2. scalar genetic algorithm
-3. NSGA-II
-4. PPO
-5. IPPO
-6. MAPPO
+Frozen stochastic methods: **random search · scalar GA · NSGA-II · PPO · IPPO · MAPPO**.
 
 The Final Infrastructure Release **does not answer the ranking question**; it preserves a reproducible way to answer it if suitable compute becomes available later.
-
-## Reproducibility and safety boundary
-
-Scientific execution is bound to the immutable source tag `confirmatory-v0.8.2-final`. Confirmatory hydration and confirmatory execution remain disabled at the release boundary, and no confirmatory structural-response outcome was used for training, tuning, checkpoint selection, or retrospective protocol modification.
-
-This repository is research software. It does **not** certify a building, prescribe retrofit construction, predict an earthquake, replace a structural engineer, or provide code-compliance approval.
 
 ## Quick start
 
@@ -103,13 +78,6 @@ pip install -e ".[dev,api]"
 pytest -q
 python scripts/run_smoke_benchmark.py
 uvicorn seismicshield_rl.api.app:app --reload
-```
-
-Optional stacks:
-
-```bash
-pip install -e ".[marl]"
-pip install -e ".[opensees]"
 ```
 
 ## Author
@@ -136,35 +104,32 @@ Faramarz Kowsari is an author, researcher based in Istanbul. Focusing on the int
 
 ## Proje hakkında
 
-**SeismicShield-RL**, sismik sürtünme sönümleyici ortak tasarımında pekiştirmeli öğrenme, çok-etmenli pekiştirmeli öğrenme ve çok amaçlı optimizasyon yöntemlerini karşılaştırmak için geliştirilmiş, önceden kaydedilmiş ve yeniden üretilebilir bir araştırma yazılımı altyapısıdır. Proje; keşifsel yazılım doğrulamasını, eğitim/doğrulama model seçimini ve doğrulayıcı değerlendirmeyi birbirinden ayırmak için dondurulmuş sözleşmeler, değişmez bilimsel kaynak, kriptografik köken bilgisi ve deterministik yürütme planlaması kullanır.
+**SeismicShield-RL**, sismik sürtünme sönümleyici ortak tasarımında pekiştirmeli öğrenme, çok-etmenli pekiştirmeli öğrenme ve çok amaçlı optimizasyon yöntemlerini karşılaştırmak için geliştirilmiş, önceden kaydedilmiş ve yeniden üretilebilir bir araştırma yazılımı altyapısıdır. Değişmez bilimsel kaynak, dondurulmuş sözleşmeler, kriptografik köken bilgisi ve deterministik yürütme planlaması kullanır.
 
-Proje **SeismicShield-RL v0.8.2 — Final Infrastructure Release** olarak kapatılmıştır. Altyapı, OSF ön kaydı, veri manifestoları, bilimsel kaynak dondurması, çalışma-zamanı preflight doğrulaması, yürütme planlayıcısı, kanıt defteri ve yalnızca seçim amaçlı çalışma alanı tamamlanmıştır. Tam Stage-A eğitimi/seçimi ile Tier-2 doğrulayıcı deney ise ölçülen hesaplama gereksinimi ücretsiz yürütme hedefini aştığı için **çalıştırılmamıştır**.
+Proje **SeismicShield-RL v0.8.2 — Final Infrastructure Release** olarak kapatılmıştır. Altyapı ve çalışma-zamanı doğrulaması tamamlandı; tam Stage-A ve Tier-2 doğrulayıcı kampanyaları hesaplama gereksinimi ücretsiz yürütme hedefini aştığı için **çalıştırılmadı**.
 
-> **Doğrulayıcı performans sonucu üretilmemiş veya incelenmemiştir. MAPPO, PPO, IPPO, NSGA-II, scalar GA ya da random search yöntemlerinden herhangi birinin üstün olduğu iddia edilmemektedir.**
+> **Doğrulayıcı performans sonucu üretilmemiş veya incelenmemiştir. Herhangi bir algoritmanın üstün olduğu iddia edilmemektedir.**
 
-### Kalıcı araştırma kayıtları
+### Kalıcı kayıtlar
 
 - OSF ön kayıt DOI: [`10.17605/OSF.IO/64DTX`](https://doi.org/10.17605/OSF.IO/64DTX)
 - Zenodo v0.8.2 sürüm DOI: [`10.5281/zenodo.22067278`](https://doi.org/10.5281/zenodo.22067278)
 - Zenodo kavram DOI: [`10.5281/zenodo.22067277`](https://doi.org/10.5281/zenodo.22067277)
-- Değişmez bilimsel etiket: `confirmatory-v0.8.2-final`
 
 ### Tamamlanan altyapı
 
 - 34 deprem olayı ve 136 ESM kaydı
 - 52 eğitim, 20 doğrulama, 16 pilot ve 48 doğrulayıcı kayıt
-- 3, 6, 10 ve 20 katlı binalar için toplam 16 yapısal durum
+- 3, 6, 10 ve 20 katlı binalar için 16 yapısal durum
 - Tier-1 araştırma modeli ve OpenSeesPy Tier-2 arka ucu
 - 136 işlenmiş dalga biçiminin SHA-256 doğrulaması
-- 4 Tier-1 ve 4 Tier-2 pilot örneğinde başarılı çalışma-zamanı yakınsaması
-- 475 atomik shard ve toplam 2.820.160 yapısal yanıt çağrısı için deterministik yürütme planı
-- 51 Tier-2 doğrulayıcı shard'ı kilitli tutan selection-only workspace
+- 4 Tier-1 ve 4 Tier-2 pilot örneğinde başarılı preflight yakınsaması
+- 475 atomik shard ve toplam 2.820.160 yapısal yanıt çağrısı için deterministik plan
 
-Stage A tek başına **2.780.992 Tier-1 çağrısı** ve preflight ortamına göre yaklaşık **1.026,68 saat sıralı simülasyon** gerektirir. Tier-2 kampanyası **39.168 çağrı** ve yaklaşık **21,64 saat** sıralı simülasyon olarak öngörülmüştür.
+Stage A: **2.780.992 Tier-1 çağrısı / ~1.026,68 saat sıralı simülasyon**.  
+Tier-2: **39.168 çağrı / ~21,64 saat sıralı simülasyon**.
 
-### Bilimsel sınır
-
-Bu sürüm bir **araştırma yazılımı ve yeniden üretilebilirlik altyapısı** çıktısıdır; gerçek bir binanın güvenliğini onaylamaz ve herhangi bir algoritmanın sismik etkinliğini kanıtlamaz. Doğrulayıcı sonuç sınırı incelenmeden korunmuştur.
+Bu sürüm gerçek bir binanın güvenliğini onaylamaz ve herhangi bir algoritmanın sismik etkinliğini kanıtlamaz.
 
 ## Yazar
 
@@ -190,35 +155,32 @@ Faramarz Kowsari, İstanbul merkezli bir yazar ve araştırmacıdır. Teknoloji,
 
 ## Acerca del proyecto
 
-**SeismicShield-RL** es una plataforma de software de investigación prerregistrada y reproducible para comparar aprendizaje por refuerzo, aprendizaje por refuerzo multiagente y optimización multiobjetivo en el codiseño de amortiguadores de fricción para ingeniería sísmica. El proyecto separa la validación exploratoria del software, la selección entrenamiento/validación y la evaluación confirmatoria mediante contratos congelados, código científico inmutable, procedencia criptográfica y planificación determinista de la ejecución.
+**SeismicShield-RL** es una plataforma de software de investigación prerregistrada y reproducible para comparar aprendizaje por refuerzo, aprendizaje por refuerzo multiagente y optimización multiobjetivo en el codiseño sísmico de amortiguadores de fricción. Utiliza código científico inmutable, contratos congelados, procedencia criptográfica y planificación determinista de la ejecución.
 
-El proyecto está cerrado como **SeismicShield-RL v0.8.2 — Final Infrastructure Release**. Se completaron y preservaron la infraestructura, el prerregistro, los manifiestos, el código científico congelado, el preflight de ejecución, el planificador determinista, el registro de evidencias y el espacio de trabajo de solo selección. La campaña completa de Stage A y la evaluación confirmatoria Tier-2 **no se ejecutaron** porque el requisito computacional medido superó el objetivo de ejecución sin coste.
+El proyecto está cerrado como **SeismicShield-RL v0.8.2 — Final Infrastructure Release**. La infraestructura y la validación de ejecución se completaron; las campañas completas de Stage A y Tier-2 confirmatorio **no se ejecutaron** porque el requisito computacional medido superó el objetivo de ejecución sin coste.
 
-> **No se generó ni inspeccionó ningún resultado confirmatorio de rendimiento. No se afirma la superioridad de MAPPO, PPO, IPPO, NSGA-II, scalar GA ni random search.**
+> **No se generó ni inspeccionó ningún resultado confirmatorio de rendimiento. No se afirma la superioridad de ningún algoritmo.**
 
 ### Registro persistente
 
 - DOI del prerregistro OSF: [`10.17605/OSF.IO/64DTX`](https://doi.org/10.17605/OSF.IO/64DTX)
 - DOI Zenodo de la versión v0.8.2: [`10.5281/zenodo.22067278`](https://doi.org/10.5281/zenodo.22067278)
 - DOI conceptual de Zenodo: [`10.5281/zenodo.22067277`](https://doi.org/10.5281/zenodo.22067277)
-- Etiqueta científica inmutable: `confirmatory-v0.8.2-final`
 
 ### Infraestructura completada
 
 - 34 eventos y 136 registros ESM
 - 52 registros de entrenamiento, 20 de validación, 16 piloto y 48 confirmatorios
 - 16 estados estructurales para edificios de 3, 6, 10 y 20 plantas
-- simulador Tier-1 y backend OpenSeesPy Tier-2
-- reproducción de los SHA-256 procesados de los 136 registros
-- convergencia satisfactoria de 4 fixtures Tier-1 y 4 Tier-2 durante el preflight
-- plan determinista de 475 shards atómicos y 2.820.160 llamadas de respuesta estructural
-- workspace de selección que mantiene bloqueados los 51 shards confirmatorios Tier-2
+- modelo Tier-1 y backend OpenSeesPy Tier-2
+- reproducción SHA-256 de los 136 registros procesados
+- convergencia de 4 fixtures Tier-1 y 4 Tier-2 durante el preflight
+- plan determinista de 475 shards atómicos y 2.820.160 llamadas
 
-Stage A requiere **2.780.992 llamadas Tier-1** y proyectó aproximadamente **1.026,68 horas de simulación secuencial** en el entorno de preflight. La campaña Tier-2 contiene **39.168 llamadas**, equivalentes a unas **21,64 horas** secuenciales proyectadas.
+Stage A: **2.780.992 llamadas Tier-1 / ~1.026,68 horas secuenciales**.  
+Tier-2: **39.168 llamadas / ~21,64 horas secuenciales**.
 
-### Límite científico
-
-Esta versión es un resultado de **software de investigación e infraestructura de reproducibilidad**. No certifica la seguridad de un edificio ni demuestra eficacia sísmica de ningún algoritmo. La frontera confirmatoria permanece sin inspeccionar.
+Esta versión no certifica la seguridad de un edificio ni demuestra eficacia sísmica de ningún algoritmo.
 
 ## Autor
 
@@ -241,12 +203,10 @@ Faramarz Kowsari es autor e investigador radicado en Estambul. Centrado en la in
 
 ## Citation / Atıf / Cita
 
-For the exact Final Infrastructure Release / Tam sürüm / Versión exacta:
-
-**Zenodo:** https://doi.org/10.5281/zenodo.22067278  
-**Concept DOI:** https://doi.org/10.5281/zenodo.22067277  
+**Zenodo release DOI:** https://doi.org/10.5281/zenodo.22067278  
+**Zenodo concept DOI:** https://doi.org/10.5281/zenodo.22067277  
 **OSF preregistration:** https://doi.org/10.17605/OSF.IO/64DTX
 
 ## License
 
-MIT License. Third-party structural engines and datasets retain their own licenses and terms. ESM waveform bytes are not redistributed by repository artifacts.
+MIT License. Third-party engines and datasets retain their own licenses and terms. ESM waveform bytes are not redistributed by repository artifacts.
