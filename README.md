@@ -9,7 +9,8 @@
 <a href="https://doi.org/10.17605/OSF.IO/64DTX"><img alt="OSF preregistration" src="https://img.shields.io/badge/OSF-preregistered-2CB9A8"></a>
 <a href="https://doi.org/10.5281/zenodo.22067278"><img alt="Zenodo version DOI" src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22067278-blue"></a>
 <a href="https://doi.org/10.5281/zenodo.22067277"><img alt="Zenodo concept DOI" src="https://img.shields.io/badge/concept%20DOI-10.5281%2Fzenodo.22067277-blue"></a>
-<a href="docs/index.html"><img alt="Multilingual site source" src="https://img.shields.io/badge/multilingual%20site-EN%20%7C%20TR%20%7C%20ES-168D73"></a>
+<a href="https://faramarzkowsari.github.io/seismicshield-rl/"><img alt="GitHub Pages site" src="https://img.shields.io/badge/GitHub%20Pages-live-168D73"></a>
+<a href="https://faramarzkowsari.github.io/seismicshield-rl/researcher-guide.html"><img alt="Researcher Guide" src="https://img.shields.io/badge/researcher%20guide-EN%20%7C%20TR%20%7C%20ES-0A66C2"></a>
 <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
@@ -30,6 +31,8 @@ The project is closed as **SeismicShield-RL v0.8.2 — Final Infrastructure Rele
 
 ## Persistent research record
 
+- Live multilingual project site: [faramarzkowsari.github.io/seismicshield-rl](https://faramarzkowsari.github.io/seismicshield-rl/)
+- Complete multilingual Researcher Guide: [researcher-guide.html](https://faramarzkowsari.github.io/seismicshield-rl/researcher-guide.html)
 - OSF preregistration DOI: [`10.17605/OSF.IO/64DTX`](https://doi.org/10.17605/OSF.IO/64DTX)
 - Zenodo version DOI — exact v0.8.2 release: [`10.5281/zenodo.22067278`](https://doi.org/10.5281/zenodo.22067278)
 - Zenodo concept DOI — software across versions: [`10.5281/zenodo.22067277`](https://doi.org/10.5281/zenodo.22067277)
@@ -112,6 +115,8 @@ Proje **SeismicShield-RL v0.8.2 — Final Infrastructure Release** olarak kapat�
 
 ### Kalıcı kayıtlar
 
+- Canlı çok dilli proje sitesi: [faramarzkowsari.github.io/seismicshield-rl](https://faramarzkowsari.github.io/seismicshield-rl/)
+- Tam çok dilli Araştırmacı Rehberi: [researcher-guide.html](https://faramarzkowsari.github.io/seismicshield-rl/researcher-guide.html)
 - OSF ön kayıt DOI: [`10.17605/OSF.IO/64DTX`](https://doi.org/10.17605/OSF.IO/64DTX)
 - Zenodo v0.8.2 sürüm DOI: [`10.5281/zenodo.22067278`](https://doi.org/10.5281/zenodo.22067278)
 - Zenodo kavram DOI: [`10.5281/zenodo.22067277`](https://doi.org/10.5281/zenodo.22067277)
@@ -163,6 +168,8 @@ El proyecto está cerrado como **SeismicShield-RL v0.8.2 — Final Infrastructur
 
 ### Registro persistente
 
+- Sitio multilingüe del proyecto: [faramarzkowsari.github.io/seismicshield-rl](https://faramarzkowsari.github.io/seismicshield-rl/)
+- Guía completa multilingüe para investigadores: [researcher-guide.html](https://faramarzkowsari.github.io/seismicshield-rl/researcher-guide.html)
 - DOI del prerregistro OSF: [`10.17605/OSF.IO/64DTX`](https://doi.org/10.17605/OSF.IO/64DTX)
 - DOI Zenodo de la versión v0.8.2: [`10.5281/zenodo.22067278`](https://doi.org/10.5281/zenodo.22067278)
 - DOI conceptual de Zenodo: [`10.5281/zenodo.22067277`](https://doi.org/10.5281/zenodo.22067277)
