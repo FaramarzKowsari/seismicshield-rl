@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "seismicshield-rl"
-version = "0.8.2"
+version = "0.8.3"
 description = "Preregistered, reproducible research software for auditable reinforcement-learning benchmarking in seismic friction-damper co-design"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -39,7 +39,8 @@ Homepage = "https://faramarzkowsari.github.io/seismicshield-rl/"
 Repository = "https://github.com/FaramarzKowsari/seismicshield-rl"
 Documentation = "https://faramarzkowsari.github.io/seismicshield-rl/researcher-guide.html"
 Issues = "https://github.com/FaramarzKowsari/seismicshield-rl/issues"
-"Archived release" = "https://doi.org/10.5281/zenodo.22067278"
+"Archived scientific release" = "https://doi.org/10.5281/zenodo.22067278"
+"Software concept DOI" = "https://doi.org/10.5281/zenodo.22067277"
 "OSF preregistration" = "https://doi.org/10.17605/OSF.IO/64DTX"
 
 [project.optional-dependencies]
