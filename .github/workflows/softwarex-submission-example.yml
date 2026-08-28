@@ -1,0 +1,35 @@
+name: SoftwareX Submission Example
+
+on:
+  push:
+    paths:
+      - ".github/workflows/softwarex-submission-example.yml"
+  workflow_dispatch:
+
+jobs:
+  freeze-example:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: pip install -e ".[dev,api]"
+      - name: Run SoftwareX illustrative example
+        run: python scripts/run_softwarex_example.py --output-dir results/softwarex_example_submission_v0.8.3
+      - name: Record hashes and evidence boundary
+        run: |
+          sha256sum results/softwarex_example_submission_v0.8.3/benchmark.csv
+          sha256sum results/softwarex_example_submission_v0.8.3/benchmark.json
+          sha256sum results/softwarex_example_submission_v0.8.3/manifest.json
+          sha256sum results/softwarex_example_submission_v0.8.3/audit_summary.json
+          cat results/softwarex_example_submission_v0.8.3/audit_summary.json
+      - name: Upload frozen example candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: softwarex-example-v0.8.3
+          path: results/softwarex_example_submission_v0.8.3/
+          if-no-files-found: error
