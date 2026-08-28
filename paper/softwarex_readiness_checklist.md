@@ -11,7 +11,7 @@ This checklist tracks the SoftwareX Original Software Publication requirements a
 - [x] Package metadata aligned for the submission branch.
 - [x] Runtime package version aligned with `pyproject.toml`.
 - [x] New submission version reserved as **v0.8.3** to avoid silently changing archived v0.8.2.
-- [ ] Merge the reviewed `softwarex-submission-prep` branch after CI passes.
+- [ ] Merge the reviewed `softwarex-finalization` branch after CI passes.
 - [ ] Create GitHub release/tag `v0.8.3-softwarex`.
 - [ ] Allow Zenodo to archive that release and mint the exact v0.8.3 DOI.
 - [ ] Insert the new exact DOI in manuscript metadata C3 and final submission files.
@@ -31,7 +31,8 @@ This checklist tracks the SoftwareX Original Software Publication requirements a
 - [x] Software DOI, OSF preregistration, and repository cited separately.
 - [x] Funding statement drafted.
 - [x] Competing-interest statement drafted.
-- [x] Generative-AI declaration drafted for current Elsevier policy.
+- [x] CRediT statement drafted for author verification.
+- [x] Generative-AI declaration drafted and aligned with Figure 1 disclosure.
 - [ ] Confirm author affiliation exactly as it should appear in publication.
 - [ ] Confirm corresponding-author email for title page and C9.
 - [ ] Transfer the final text into the current official SoftwareX Word template without changing template formatting.
@@ -40,11 +41,13 @@ This checklist tracks the SoftwareX Original Software Publication requirements a
 
 - [x] Separate highlights file prepared.
 - [x] Four highlights supplied; each is below the 85-character maximum.
-- [ ] Produce Figure 1 as a clean architecture schematic.
-- [ ] Verify every label and arrow against repository architecture.
+- [x] Figure 1 produced as a clean publication-grade architecture schematic.
+- [x] Figure 1 labels, counts, arrows, fidelity ladder, and fail-closed gate verified against repository architecture.
+- [x] Editable vector Figure 1 source stored at `paper/figures/Figure_1_SeismicShield_RL_Architecture.svg`.
+- [x] Figure caption contains AI-assistance disclosure and states that no research data were generated or altered.
 - [ ] Embed Figure 1 directly in the Word manuscript.
-- [ ] Keep total figure count at or below six.
-- [ ] If any generative-AI image assistance is used, include the disclosure required by Elsevier in the figure caption; do not use generative AI for a graphical abstract.
+- [x] Total figure count remains below the six-figure limit.
+- [x] Figure 1 is an explanatory architecture schematic, not a graphical abstract.
 
 ## D. Illustrative example and software validation
 
@@ -55,7 +58,7 @@ This checklist tracks the SoftwareX Original Software Publication requirements a
 - [x] Example records `paper_level_efficacy_claim=false`.
 - [x] Example hashes inputs and output artifacts.
 - [x] Automated test added for the evidence boundary.
-- [ ] Confirm CI passes on the submission branch / pull request.
+- [ ] Confirm CI passes on `softwarex-finalization` / pull request.
 - [ ] Run the example from a clean environment after merge and preserve the output used for the submission package.
 
 ## E. Literature and claims
@@ -65,7 +68,7 @@ This checklist tracks the SoftwareX Original Software Publication requirements a
 - [x] OpenSeesPy SoftwareX paper included.
 - [x] PettingZoo reference included.
 - [x] NSGA-II and pymoo references included.
-- [x] Preregistration and computational reproducibility references included.
+- [x] Computational reproducibility references included.
 - [x] Existing scientific claims checked against the repository evidence ledger and preflight artifact.
 - [ ] Final reference cross-check after Word-template conversion.
 
@@ -76,13 +79,13 @@ This checklist tracks the SoftwareX Original Software Publication requirements a
 - [x] Proposed CRediT roles prepared for author verification.
 - [x] Data/code availability statement prepared.
 - [x] Funding, competing-interest, and AI declarations prepared.
-- [ ] Final `.docx` in official SoftwareX template.
-- [ ] Separate editable highlights file.
-- [ ] Final figure source and embedded manuscript figure.
+- [x] Final editable Figure 1 source prepared.
+- [ ] Final `.docx` in the official SoftwareX template or, if the official template cannot be programmatically obtained, a clearly labeled template-compatible manuscript for manual transfer.
+- [ ] Separate editable highlights file for upload.
 - [ ] Exact v0.8.3 Zenodo DOI.
 - [ ] Complete Elsevier declarations tool at submission.
 - [ ] Enter verified author affiliation, email, and contact details in Editorial Manager.
 
 ## Submission gate
 
-Do **not** submit until all unchecked items in sections A, B, C, D, and F that are required for first submission are resolved. In particular, do not submit with a mutable code-version identity or with the C3 DOI placeholder still present.
+Do **not** submit until the exact v0.8.3 DOI, author affiliation, and corresponding-author email are resolved. The scientific source must remain `confirmatory-v0.8.2-final` at commit `cecd3b6c27b5deb6cb6be7ddc478cfc407a45644`; publication packaging must not be interpreted as confirmatory evidence.

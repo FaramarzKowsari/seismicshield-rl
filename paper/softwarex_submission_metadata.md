@@ -39,9 +39,15 @@ Software concept DOI: https://doi.org/10.5281/zenodo.22067277
 OSF preregistration DOI: https://doi.org/10.17605/OSF.IO/64DTX  
 SoftwareX v0.8.3 version DOI: **insert after Zenodo mints the submission release**
 
+## Figure 1
+
+Source: `paper/figures/Figure_1_SeismicShield_RL_Architecture.svg`
+
+Caption: **Figure 1. SeismicShield-RL research-software architecture and evidence boundary.** Frozen data, source, objective, algorithm, seed, budget, and selection contracts feed deterministic execution and common Tier-1/Tier-2 simulation interfaces. Stage-A selection is separated from confirmatory Tier-2 evaluation by a fail-closed gate. The evidence ledger distinguishes verified infrastructure claims from efficacy claims that remain blocked. The vector schematic was prepared with assistance from OpenAI ChatGPT (GPT-5.6 Sol) and verified by the author; no research data were generated or altered in preparing the figure.
+
 ## Generative-AI declaration
 
-During the preparation of this work, the author used OpenAI ChatGPT (GPT-5.6 Sol) to assist with literature organization, manuscript structuring, language refinement, and preparation of publication-support code and documentation. The author reviewed and edited the resulting material, independently checked factual claims and references, and takes full responsibility for the content of the publication. AI-assisted publication-support utilities do not alter the immutable v0.8.2 scientific source or supply confirmatory research outcomes.
+During the preparation of this work, the author used OpenAI ChatGPT (GPT-5.6 Sol) to assist with literature organization, manuscript structuring, language refinement, publication-support code and documentation, and preparation of the explanatory architecture schematic in Figure 1. The author reviewed and edited the resulting material, independently checked factual claims and references, verified the figure against the repository's frozen architecture contracts, and takes full responsibility for the content of the publication. AI assistance did not generate or alter research data, modify the immutable v0.8.2 scientific source, or supply confirmatory research outcomes.
 
 ## Suggested submission category / framing
 
