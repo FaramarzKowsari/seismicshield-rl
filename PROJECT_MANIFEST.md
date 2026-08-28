@@ -13,7 +13,7 @@
 
 ## Versioning boundary
 
-Version `0.8.3` is the current SoftwareX publication-packaging version of the repository. It aligns the installable package metadata, runtime package version, citation metadata, documentation, public illustrative example, and journal-submission support files.
+Version `0.8.3` is the current SoftwareX publication-packaging version of the repository. It aligns the installable package metadata, runtime package version, citation metadata, documentation, public illustrative example, and journal-submission support files. The exact `v0.8.3-softwarex` release is archived at Zenodo DOI `10.5281/zenodo.22144346` and points to release commit `1da50d411a2744c51307a0196edf656c20c1bde8`.
 
 The scientific experiment itself remains frozen at `v0.8.2` and is identified by:
 
@@ -40,6 +40,7 @@ Publication-support changes after v0.8.2 must not be interpreted as changes to t
 
 - Repository: https://github.com/FaramarzKowsari/seismicshield-rl
 - Documentation: https://faramarzkowsari.github.io/seismicshield-rl/researcher-guide.html
+- SoftwareX v0.8.3 release DOI: https://doi.org/10.5281/zenodo.22144346
 - Software concept DOI: https://doi.org/10.5281/zenodo.22067277
 - Frozen v0.8.2 archive DOI: https://doi.org/10.5281/zenodo.22067278
 - OSF preregistration DOI: https://doi.org/10.17605/OSF.IO/64DTX
@@ -61,6 +62,6 @@ Publication-support changes after v0.8.2 must not be interpreted as changes to t
 - `paper/softwarex_highlights.txt`
 - `paper/softwarex_cover_letter.md`
 - `paper/softwarex_submission_metadata.md`
-- `paper/SOFTWAREX_READINESS_CHECKLIST.md`
+- `paper/softwarex_readiness_checklist.md`
 - `paper/FIGURE_1_ARCHITECTURE_SPEC.md`
 - `RELEASE_NOTES_v0.8.3_SOFTWAREX.md`
