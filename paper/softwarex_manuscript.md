@@ -3,136 +3,119 @@
 **Article type:** Original Software Publication  
 **Target journal:** SoftwareX  
 **Author:** Faramarz Kowsari  
-**ORCID:** https://orcid.org/0000-0003-1692-0453
-
-## Highlights
-
-- Preregistered benchmark infrastructure separates exploration, selection, and confirmatory evaluation.
-- Frozen data partitions, seeds, budgets, and immutable source make computational decisions auditable.
-- Tier-1 and OpenSeesPy Tier-2 runtime paths were verified on pilot fixtures without inspecting confirmatory outcomes.
-- Deterministic execution planning exposes the full computational workload before expensive experiment execution.
+**ORCID:** https://orcid.org/0000-0003-1692-0453  
+**Affiliation:** [confirm before submission]  
+**Corresponding-author email:** [confirm before submission]
 
 ## Abstract
 
-SeismicShield-RL is open-source research software for preregistered and reproducible benchmarking of reinforcement learning, multi-agent reinforcement learning, and multi-objective optimization in seismic friction-damper co-design. The software treats data partitions, algorithm budgets, random seeds, source identity, checkpoint-selection rules, and confirmatory access as explicit computational contracts rather than informal experimental conventions. Its architecture combines deterministic execution planning, cryptographic provenance, earthquake-record partitioning, structural-uncertainty models, a fast Tier-1 research simulator, and an OpenSeesPy Tier-2 verification backend. The v0.8.2 infrastructure freezes 136 processed earthquake records from 34 events into training, validation, pilot, and confirmatory partitions and represents 16 structural states across four building heights. Runtime preflight reproduced all frozen processed-record hashes and successfully exercised four Tier-1 and four Tier-2 pilot fixtures. The registered computation is deterministically represented by 475 atomic shards comprising 2,820,160 structural-response calls. The full Stage-A and confirmatory Tier-2 campaigns were deliberately deferred when measured compute requirements exceeded the intended no-cost execution envelope. Accordingly, this release makes no claim about algorithm superiority; instead, it provides a reusable software pattern for preserving a clean confirmatory boundary in expensive simulation-based machine-learning studies.
+SeismicShield-RL is open-source research software for auditable benchmarking of reinforcement learning, multi-agent reinforcement learning, and multi-objective optimization in seismic friction-damper co-design. It converts experimental choices—data partitions, seeds, budgets, source identity, selection rules, and confirmatory access—into explicit software contracts. The frozen scientific infrastructure contains 136 processed earthquake records, 16 structural states, Tier-1 and OpenSeesPy Tier-2 simulation paths, cryptographic provenance, and a deterministic execution ledger. Pilot preflight verified record hashes and exercised both simulation tiers without inspecting confirmatory outcomes. The software therefore supports reproducible future comparisons while explicitly preventing infrastructure-validation results from being misrepresented as algorithm-efficacy evidence.
 
 **Keywords:** Seismic engineering; Reinforcement learning; Friction dampers; OpenSeesPy; Reproducible research; Multi-objective optimization
 
 ## Code metadata
 
-| Nr. | Code metadata description | SeismicShield-RL |
+| Nr. | Code metadata description | Metadata |
 |---|---|---|
-| C1 | Current code version | v0.8.2 |
-| C2 | Permanent link to code/repository used for this code version | https://github.com/FaramarzKowsari/seismicshield-rl |
-| C3 | Permanent archive / reproducible software record | Zenodo version DOI: https://doi.org/10.5281/zenodo.22067278; concept DOI: https://doi.org/10.5281/zenodo.22067277 |
+| C1 | Current code version | v0.8.3 |
+| C2 | Permanent link to code/repository used for this code version | https://github.com/FaramarzKowsari/seismicshield-rl/tree/267e4abcb376faf07d0ca8b2cda827de30a43bdf |
+| C3 | Permanent link to Reproducible Capsule | Exact v0.8.3 SoftwareX archive DOI to be inserted after release; frozen v0.8.2 scientific archive: https://doi.org/10.5281/zenodo.22067278; software concept DOI: https://doi.org/10.5281/zenodo.22067277 |
 | C4 | Legal Code License | MIT License |
 | C5 | Code versioning system used | Git |
 | C6 | Software code languages, tools, and services used | Python; NumPy; PyYAML; OpenSeesPy; Gymnasium; PettingZoo; TorchRL/PyTorch; pymoo; FastAPI; pytest; GitHub Actions |
-| C7 | Compilation requirements, operating environments & dependencies | Python >=3.11. OpenSeesPy optional backend is pinned to 3.8.0.0 for Python >=3.12. Optional dependency groups are declared in `pyproject.toml`. Pilot preflight was recorded on Linux with Python 3.12.14. |
-| C8 | Developer documentation/manual | https://faramarzkowsari.github.io/seismicshield-rl/researcher-guide.html |
-| C9 | Support | GitHub Issues: https://github.com/FaramarzKowsari/seismicshield-rl/issues; corresponding-author email should be entered in the journal submission system. |
+| C7 | Compilation requirements, operating environments & dependencies | Python >=3.11; optional OpenSeesPy backend pinned to 3.8.0.0 for Python >=3.12; dependency groups declared in `pyproject.toml`; CI covers Python 3.11 and 3.12 on Ubuntu |
+| C8 | If available, link to developer documentation/manual | https://faramarzkowsari.github.io/seismicshield-rl/researcher-guide.html |
+| C9 | Support email for questions | [confirm corresponding-author email before submission] |
 
 ## 1. Motivation and significance
 
-Seismic retrofit optimization with friction dampers is a computational design problem in which decisions at individual stories interact through nonlinear structural response. Recent work has shown that reinforcement-learning methods can be used to search damper distributions for earthquake protection [1]. The scientific difficulty, however, is broader than implementing a learning algorithm. A convincing comparison must control which earthquake records are available during tuning, how computational budgets are allocated, how stochastic seeds are handled, when checkpoints are selected, what structural uncertainty is exposed to each method, and whether final evaluation data remain unseen while experimental choices are still being made.
+Optimizing friction-damper layouts is a coupled structural-design problem: changing the number, location, or slip-force level of dampers on one story changes the dynamic response of the whole building. Reinforcement-learning methods have already been investigated for friction-damper placement, demonstrating that learned decision policies can be relevant to this design space [1]. The harder scientific question is how to compare such methods fairly when the evaluation itself is expensive, stochastic, and sensitive to implementation choices.
 
-These concerns are especially acute in reinforcement learning. Henderson et al. [2] documented substantial reproducibility and comparison problems arising from implementation details, stochasticity, evaluation choices, and inconsistent reporting. In simulation-based engineering, the same weaknesses can be amplified by costly numerical solvers and by the temptation to change experiments after partial results reveal which choices are promising. A benchmark can therefore be technically executable while still being scientifically difficult to audit.
+Deep reinforcement-learning results can vary with random seeds, environment details, evaluation procedures, and reporting choices [2]. More generally, reproducible computational research requires exact tracking of software versions, parameters, intermediate artifacts, random seeds, and the path by which a result was produced [3,4]. Research-software and MLOps work has likewise emphasized provenance, configuration management, automated testing, and experiment traceability [5,6]. These practices are necessary, but they do not by themselves enforce a boundary between exploratory development and a later confirmatory evaluation.
 
-SeismicShield-RL was developed around a different premise: the experimental boundary itself should be software. The project represents data identities, partitions, objective definitions, algorithm identities, budgets, seeds, model-selection behavior, inferential rules, and source provenance as frozen machine-readable or version-controlled contracts. Confirmatory execution is guarded by fail-closed checks. Scientific source is identified by an immutable Git tag and commit. Execution is planned as atomic shards whose meaning is fixed before expensive computation begins. An evidence ledger distinguishes verified infrastructure claims from blocked efficacy claims.
+SeismicShield-RL addresses that boundary as a software problem. Its central design choice is to represent experiment identity explicitly: earthquake partitions, structural worlds, objective definitions, algorithm budgets, seeds, selection behavior, analysis rules, and source identity are frozen as machine-readable or version-controlled contracts. Confirmatory execution is fail-closed. If the expected source, manifest, or contract cannot be authenticated, the run stops rather than silently substituting a convenient current state.
 
-This design does not attempt to claim novelty for reinforcement learning, PPO, MARL, NSGA-II, or friction dampers in isolation. Rather, the software contribution is an auditable benchmark architecture for comparing those methods under a preregistered information boundary. The current release is intentionally an infrastructure result. It preserves the possibility of a later clean confirmatory study instead of weakening the protocol to fit a convenient compute budget.
+The software contribution is therefore not a new reinforcement-learning algorithm or a new finite-element solver. It is a reusable experimental-governance layer for simulation-based optimization. The current release deliberately separates two software identities. Version 0.8.3 is the publication and usability package. The scientific experiment remains frozen at v0.8.2, tag `confirmatory-v0.8.2-final`, commit `cecd3b6c27b5deb6cb6be7ddc478cfc407a45644`, with its exact archive preserved on Zenodo [7]. This separation permits documentation, examples, and submission support to improve without redefining the registered scientific computation.
 
 ## 2. Software description
 
-### 2.1 Architecture
+### 2.1 Architecture and frozen benchmark contracts
 
-SeismicShield-RL is organized as a layered research system. Ground motions enter through data contracts carrying stable identifiers and provenance metadata. Synthetic fixtures are explicitly tagged so they cannot be confused with real records. Structural response is exposed through a common simulation contract. A fast nonlinear shear-building simulator provides the Tier-1 path for software validation and large-scale algorithm engineering, while an OpenSeesPy backend provides the higher-fidelity Tier-2 path. OpenSeesPy itself is a Python interface to the OpenSees finite-element framework and is widely used for structural and earthquake-engineering simulation [3].
+SeismicShield-RL is organized around a common evaluation path for heuristic optimization, evolutionary optimization, single-agent reinforcement learning, and multi-agent reinforcement learning. Figure 1 summarizes the intended architecture: data and provenance enter frozen experimental contracts; contracts feed a deterministic execution planner; optimization methods interact with common simulation and objective interfaces; simulation outputs are recorded through an evidence and provenance layer.
 
-The objective layer converts a candidate design into damper counts, slip-force assignments, a normalized retrofit-cost proxy, maximum inter-story drift ratio (MIDR), and peak floor acceleration (PFA). Physics code is intentionally separated from reinforcement-learning reward weights. Single-agent and multi-agent environments share the same evaluator and may not bypass objective normalization, invalid-design checks, data partitions, or budget accounting. PettingZoo-style multi-agent interfaces support story-decomposed MARL while retaining an interoperable environment abstraction [4].
+The frozen v0.8.2 scientific infrastructure identifies 136 processed earthquake records from 34 events. The records are partitioned at the event level into 52 training, 20 validation, 16 pilot, and 48 confirmatory records. Restricted waveform bytes are not redistributed. Instead, the repository preserves source provenance and processed-waveform SHA-256 values so authorized users can re-establish record identity without the project republishing restricted source data.
 
-Above the numerical layer, SeismicShield-RL adds research-governance components: frozen manifests, seed ledgers, confirmatory gates, deterministic planning, selection-only workspaces, provenance checks, CI workflows, and an evidence ledger. These components are not presentation utilities. They determine which scientific computations are authorized and which claims are eligible to move from blocked to verified status.
+Structural uncertainty is represented by 16 states across 3-, 6-, 10-, and 20-story buildings. For each building height, one nominal state and three frozen perturbations are defined. Candidate friction-damper designs encode story-level damper counts and slip-force levels. The shared objective layer evaluates retrofit cost, maximum inter-story drift ratio (MIDR), and peak floor acceleration (PFA). Scalar reward or objective combinations used by particular algorithms are kept separate from the underlying physical response calculation.
 
-### 2.2 Frozen benchmark objects
+The registered algorithm ladder contains random search, scalar genetic optimization, NSGA-II, PPO, IPPO, and MAPPO. NSGA-II supplies an established multi-objective evolutionary baseline [8], while the software can use the pymoo framework for multi-objective optimization [9]. Single-agent and multi-agent interfaces share the same evaluator and budget accounting. PettingZoo-compatible multi-agent abstractions support story-decomposed MARL without permitting an agent implementation to bypass the frozen objective or data contracts [10].
 
-The v0.8.2 earthquake manifest contains 136 records from 34 events. The frozen partition contains 52 training records, 20 validation records, 16 pilot records, and 48 confirmatory records. Restricted waveform bytes are not redistributed by the repository. Instead, the benchmark stores source provenance and processed-waveform hashes so record identity can be re-established without publishing restricted source files.
+### 2.2 Software functionalities and multi-fidelity research boundaries
 
-Four building heights are represented: 3, 6, 10, and 20 stories. Each height has one nominal model and three frozen structural perturbations, producing 16 structural states. At each story, a candidate design may choose a damper count from zero through four and a slip-force level from a fixed grid. The principal objective vector retains retrofit cost, MIDR, and PFA. Where scalarization is required by a training or baseline method, its weights are fixed by the registered contract rather than selected after observing confirmatory results.
+The project provides two simulation paths. Tier-1 is a fast research surrogate intended for software development, algorithm engineering, and large-scale preliminary evaluation. Tier-2 uses OpenSeesPy, the Python interface to the OpenSees finite-element framework [11], as a higher-fidelity verification backend. The fidelity distinction is explicit in the evidence model: a Tier-1 result is not automatically treated as engineering validation, and a pilot Tier-2 convergence check is not treated as confirmatory evidence.
 
-The registered algorithm ladder contains random search, a scalar genetic algorithm, NSGA-II, PPO, IPPO, and MAPPO. NSGA-II provides a standard elitist multi-objective evolutionary baseline [5], and the implementation can use the pymoo ecosystem for multi-objective optimization [6]. Eight algorithm seeds are frozen in the protocol. Learned-policy checkpoint schedules and validation-selection behavior are also specified before confirmatory execution.
+Above the numerical layer, the repository provides six practical research functions: versioned benchmark identity; shared evaluation rules across optimization families; frozen train/validation/pilot/confirmatory information boundaries; deterministic execution planning; provenance and source-authentication checks; and claim-status tracking through an evidence ledger. The evidence ledger records whether a claim is verified as infrastructure evidence, exploratory, or blocked. A calculation may therefore be technically successful while still being ineligible to support a paper-level efficacy claim.
 
-### 2.3 Immutable source and fail-closed execution
+Seed ledgers, frozen manifests, confirmatory gates, selection-only workspaces, continuous-integration workflows, and cryptographic hashes implement these functions. Confirmatory runs are fail-closed: an unexpected source state, manifest, seed ledger, or analysis contract blocks execution rather than silently falling back to the current working tree.
 
-The scientific implementation is frozen at tag `confirmatory-v0.8.2-final` and commit `cecd3b6c27b5deb6cb6be7ddc478cfc407a45644`. This separation between immutable scientific source and later operational tooling allows transport, documentation, or crash-safety utilities to evolve without silently redefining the registered computation.
+Execution is expanded before full computation into deterministic atomic shards. The frozen plan contains 475 shards and 2,820,160 structural-response calls: 424 Stage-A Tier-1 shards comprising 2,780,992 calls, followed by 51 Tier-2 confirmatory shards comprising 39,168 calls. Learned Stage-A shards couple training and validation selection under the frozen implementation. Arbitrarily splitting such a shard to fit an external CI time limit would change the registered computational semantics, so infrastructure interruption is handled differently from a scientific solver failure.
 
-Before confirmatory work can run, the gate checks the expected source identity, manifests, numerical settings, algorithm bundle, seeds, and analysis contract. Failure to authenticate the expected state stops execution rather than substituting a newer working tree. This fail-closed behavior matters because a successful numerical result generated from the wrong code or wrong partition is not a valid instance of the preregistered study.
+### 2.3 Sample code snippets analysis
 
-### 2.4 Deterministic execution planning
+Version 0.8.3 adds a small public example designed specifically for software validation. It uses a synthetic fixture and never reads the frozen confirmatory earthquake partition. After installation, the example can be run with:
 
-The registered computation is expanded into an auditable ledger of atomic work units before full execution. The final plan contains 475 shards and 2,820,160 structural-response calls. Stage A contains 424 shards and 2,780,992 Tier-1 calls; the subsequent Tier-2 campaign contains 51 shards and 39,168 calls.
+```bash
+pip install -e ".[dev,api]"
+python scripts/run_softwarex_example.py --output-dir results/softwarex_example
+```
 
-A learned Stage-A shard couples training and validation behavior through the frozen implementation. Because checkpoint selection occurs within that scientific unit, splitting the shard merely to satisfy an external hosted-CI wall-clock limit would alter registered semantics. SeismicShield-RL therefore distinguishes an infrastructure interruption from a scientific solver failure. Infrastructure interruption calls for whole-shard restart. A solver or numerical failure produced by the simulator is retained as a scientific outcome and is not silently retried until success.
+The runner writes benchmark artifacts plus `audit_summary.json`. The summary records the software version, configuration hash, synthetic-fixture hash, output hashes, convergence status, and two explicit evidence-boundary fields:
 
-## 3. Software functionalities
+```text
+confirmatory_data_used = false
+paper_level_efficacy_claim = false
+```
 
-The public release supports five practical research functions.
+These fields are also protected by automated tests. The snippet therefore demonstrates installation, configuration, artifact generation, hashing, and evidence labeling without acting as a reduced confirmatory experiment.
 
-First, it creates reproducible benchmark identities. Earthquake manifests, processed hashes, structural worlds, seeds, algorithms, and analysis rules are versioned and cross-checked. This makes it possible to ask whether two reported runs are instances of the same experiment rather than merely similar scripts.
+## 3. Illustrative examples
 
-Second, it separates software testing from scientific evidence. Pilot records and synthetic fixtures can be used to debug environments, numerical convergence, APIs, and orchestration. Outputs from these paths are labeled exploratory or runtime-validation evidence. They cannot automatically become paper-level claims.
+### 3.1 Auditable runtime preflight without confirmatory leakage
 
-Third, it supports multiple optimization families behind common evaluation rules. Heuristics, evolutionary methods, single-agent RL, and MARL share objective definitions and budget accounting. This reduces the risk that one method receives hidden advantages through different preprocessing or evaluation logic.
+The preserved v0.8.2 runtime preflight illustrates the full audit path. It authenticated the frozen scientific source, checked the earthquake manifest, independently reproduced SHA-256 values for all 136 processed records, reproduced the frozen partition counts, and exercised four Tier-1 and four Tier-2 pilot fixtures. All eight pilot fixture calls converged in the tested environment.
 
-Fourth, the project provides a fidelity ladder. The Tier-1 simulator is suitable for rapid engineering of algorithms and execution infrastructure. The Tier-2 OpenSeesPy path supplies a higher-fidelity backend under the same conceptual simulation contract. The distinction is explicit so surrogate convenience is not mistaken for engineering validation.
+Measured mean wall-clock times were approximately 1.329 s per Tier-1 call and 1.989 s per Tier-2 call in the recorded Linux/Python 3.12 environment. Applying those measured rates to the deterministic call ledger projected approximately 1,026.68 sequential simulation hours for Stage A and 21.64 sequential hours for the Tier-2 campaign. These values are workload projections for the tested environment, not hardware-independent performance guarantees.
 
-Fifth, the evidence ledger encodes the epistemic status of claims. For example, the v0.8.2 ledger marks the runtime-preflight claim as verified but keeps algorithm-superiority and generalization claims blocked. This makes the absence of a result visible and machine-checkable rather than leaving it to prose qualifiers in a paper.
+The preflight did not execute confirmatory structural-response simulations, emit confirmatory response metrics, or inspect confirmatory outcomes. That distinction changed the project decision. The measured workload exceeded the intended no-cost execution envelope, while splitting atomic learned shards merely to satisfy hosted-CI limits would have altered the registered semantics. Rather than shrink the protocol after preregistration, the full Stage-A and Tier-2 campaigns were deferred. The software thus demonstrated a function beyond numerical execution: it made the cost of the registered experiment visible early enough to stop without contaminating the confirmatory boundary.
 
-## 4. Illustrative example: an auditable preflight without confirmatory leakage
+## 4. Impact
 
-The v0.8.2 runtime preflight illustrates the intended workflow. The process authenticated the immutable scientific source, materialized or checked records against the frozen manifest, reproduced processed-waveform SHA-256 values for all 136 records, and reproduced the expected partition counts. It then exercised four Tier-1 and four Tier-2 pilot fixtures. All eight fixture calls converged in the tested environment.
+SeismicShield-RL enables research questions that are difficult to pose cleanly with ad hoc experiment scripts. A future user can ask whether MAPPO, PPO, IPPO, NSGA-II, scalar GA, or random search differs in held-out Pareto performance under identical earthquake partitions, structural uncertainty, budgets, seeds, selection rules, and objective definitions. Because those conditions are explicit software objects, a later comparison can distinguish an algorithmic difference from a hidden change in experimental protocol.
 
-The preserved preflight artifact reports a mean Tier-1 wall-clock time of approximately 1.329 s per call and a mean Tier-2 time of approximately 1.989 s per call on the recorded Linux/Python 3.12 environment. Applying these measured rates to the registered call ledger projected approximately 1,026.68 sequential Tier-1 simulation hours for Stage A and 21.64 sequential hours for the Tier-2 campaign. These figures are workload projections from the tested environment, not promises of calendar completion on other hardware.
+The software also improves existing simulation-based research by making provenance and eligibility of evidence inspectable. Prior work on reproducible computation emphasizes versioning, seeds, intermediate results, and public scripts [3,4], while MLOps-oriented research software emphasizes traceability and automated workflow structure [5]. Provenance-focused SoftwareX work shows the continuing need to connect outputs with the code and context that generated them [6]. SeismicShield-RL extends these concerns to a confirmatory boundary: it records not only how an output was produced, but whether the output was authorized to answer the scientific question being claimed.
 
-Crucially, the preflight records that no confirmatory structural-response simulations were run, no confirmatory response metrics were emitted, and no confirmatory outcome was inspected. One pilot record was used for runtime testing; the confirmatory boundary remained closed. The outcome of the preflight was therefore not a statement about seismic performance. It was evidence that the data-integrity and runtime paths were ready and that the registered study had a computational scale that could be quantified before committing resources.
+The architecture is transferable beyond friction dampers. The same pattern can be adapted to structural control, retrofit optimization, design under uncertainty, or other machine-learning studies that use a cheap simulator for development and reserve an expensive solver for final evaluation. The reusable elements are domain-independent: immutable scientific source, frozen partitions, equal-budget algorithm contracts, deterministic execution plans, restart semantics, cryptographic provenance, and evidence-status tracking.
 
-This result caused a scientifically meaningful stopping decision. The project had been designed around a no-cost execution envelope, while the measured workload—especially the atomic learned Stage-A shards—exceeded what standard hosted CI could execute without changing the registered semantics. Instead of shrinking budgets after preregistration or presenting a reduced convenience study as the registered experiment, the full Stage-A and Tier-2 campaigns were deferred. The uninspected confirmatory boundary was preserved for a future continuation with suitable compute.
+Current impact should nevertheless be stated conservatively. The repository is a recent research-software release; no claim is made here about widespread adoption, commercial use, or changes in users' daily practice. The full registered Stage-A and confirmatory Tier-2 campaigns have not been executed, so the software provides no evidence that any included optimization method is superior, no demonstrated out-of-distribution generalization result, and no certification of real-building safety. The Tier-1 surrogate and Tier-2 OpenSeesPy backend remain research components that require problem-specific engineering validation before real-world design use.
 
-## 5. Impact
+This limitation is part of the software's intended value. In the evidence ledger, infrastructure facts—such as successful pilot convergence and verified processed-record hashes—can be marked verified while efficacy statements remain blocked. The system therefore reduces the risk that readiness evidence is rhetorically upgraded into performance evidence simply because a manuscript needs a result.
 
-SeismicShield-RL contributes a reusable pattern for high-integrity computational experimentation rather than a new claim about which optimization algorithm is best. Its immediate domain is seismic friction-damper co-design, where recent research already demonstrates the relevance of intelligent optimization and reinforcement learning [1]. The software adds the missing experimental-governance layer needed to compare such methods under fixed information and computational budgets.
+## 5. Conclusions
 
-For researchers, the main practical benefit is traceability. A reported result can be tied to a source commit, data manifest, processed hashes, structural world, seed set, algorithm contract, execution shard, and analysis rule. This structure is useful when numerical experiments are expensive enough that failures, restarts, partial execution, and hardware constraints become part of the scientific process rather than incidental engineering details.
+SeismicShield-RL turns normally informal choices in simulation-based machine-learning research into explicit software contracts. Data partitions, seeds, algorithm budgets, source identity, checkpoint-selection behavior, simulation fidelity, execution units, and evidence status can all be inspected before expensive computation begins. The frozen v0.8.2 infrastructure establishes the scientific boundary, while v0.8.3 provides publication-oriented metadata, documentation, tests, and a synthetic validation example without changing that frozen experiment.
 
-The architecture is also transferable. The same pattern can be applied to other simulation-based optimization problems in which researchers tune models on relatively inexpensive approximations and reserve expensive high-fidelity solvers for later confirmation. Examples include structural control, retrofit optimization, design under uncertainty, and other reinforcement-learning studies coupled to finite-element or multiphysics simulators. The key reusable elements are not earthquake-specific: immutable scientific source, frozen partitions, equal-budget algorithm contracts, fail-closed gates, atomic execution planning, and evidence-status tracking.
+The runtime preflight verified the integrity and execution pathways needed for the registered study and exposed its computational scale before confirmatory outcomes were inspected. When the projected workload exceeded the intended resource envelope, the project preserved the protocol and deferred execution rather than modifying the experiment after registration. The resulting software is therefore useful both for running future comparisons and for defining when a comparison has not yet earned a scientific claim.
 
-The project further demonstrates a useful negative capability for research software: it can encode when *not* to claim a result. In the current evidence ledger, the statement that the runtime preflight verified all 136 processed hashes and converged on four Tier-1 plus four Tier-2 pilot fixtures is verified. Claims that MARL improves held-out Pareto performance, generalizes to unseen earthquakes, or remains competitive under structural uncertainty are explicitly blocked. This distinction reduces pressure to turn infrastructure readiness into efficacy rhetoric.
+## Acknowledgements
 
-## 6. Limitations and intended use
-
-SeismicShield-RL is research software, not a building-design certification tool. The Tier-1 surrogate and Tier-2 OpenSeesPy backend are components of a benchmark and require problem-specific validation before any real-building engineering use. The software does not certify code compliance, life safety, retrofit approval, or damper suitability for a particular structure.
-
-The principal scientific limitation of v0.8.2 is deliberate and substantial: the full registered Stage-A optimization/selection campaign and the confirmatory Tier-2 experiment have not been executed. The software therefore provides no evidence that MAPPO, PPO, IPPO, NSGA-II, scalar GA, or random search is superior on the frozen benchmark. It also does not establish out-of-distribution generalization or robustness to the frozen structural uncertainties.
-
-The earthquake-record workflow depends on external source access and does not redistribute restricted waveform bytes. Reproduction therefore requires continued availability of the source material or equivalent authorized access. Runtime estimates are hardware-dependent and do not include every orchestration, training, I/O, or scheduling cost.
-
-A future continuation should preserve the immutable v0.8.2 scientific contracts, execute the 424 Stage-A shards, freeze the selected designs and learned checkpoints, and only then authorize the 51 confirmatory Tier-2 shards. Any modified protocol should be identified as a new study rather than retrospectively presented as the original preregistration.
-
-## 7. Conclusions
-
-SeismicShield-RL turns several normally informal choices in simulation-based machine-learning research into explicit software objects: source identity, data partitions, seeds, budgets, checkpoint selection, evidence status, and confirmatory access. The v0.8.2 release verifies the integrity and runtime pathways needed to execute its registered benchmark and exposes the full computational workload through a deterministic execution ledger. When that workload exceeded the intended resource envelope, the project stopped before confirmatory outcome inspection rather than altering the protocol to manufacture a convenient result.
-
-The contribution is therefore infrastructural but scientifically consequential. A benchmark is useful not only when it produces rankings; it is also useful when it makes clear which rankings have not yet been earned. By preserving an auditable path from source data to future evidence, SeismicShield-RL provides a reusable research-software architecture for expensive reinforcement-learning and optimization studies coupled to engineering simulation.
+No external funding is claimed for the work described in this manuscript.
 
 ## Data and code availability
 
-The source code is available at https://github.com/FaramarzKowsari/seismicshield-rl under the MIT License. The exact v0.8.2 software release is archived at Zenodo, DOI https://doi.org/10.5281/zenodo.22067278, with concept DOI https://doi.org/10.5281/zenodo.22067277. The preregistered protocol is identified separately by OSF DOI https://doi.org/10.17605/OSF.IO/64DTX. The repository does not redistribute restricted earthquake waveform bytes; provenance and frozen processed-waveform hashes are provided instead.
+The source code is publicly available at https://github.com/FaramarzKowsari/seismicshield-rl under the MIT License. The frozen v0.8.2 scientific release is archived at Zenodo, DOI https://doi.org/10.5281/zenodo.22067278, with software concept DOI https://doi.org/10.5281/zenodo.22067277. The preregistered protocol is identified separately by OSF DOI https://doi.org/10.17605/OSF.IO/64DTX. Restricted earthquake waveform bytes are not redistributed; provenance metadata and processed-waveform hashes are preserved instead. The exact v0.8.3 SoftwareX archive DOI will be inserted after the submission release is minted.
 
 ## Declaration of competing interest
 
 The author declares no competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
-
-## Acknowledgements
-
-No external funding is claimed in this manuscript. Computational experiments reported here are limited to the preserved runtime/integrity preflight and pilot fixtures described above.
 
 ## References
 
@@ -140,12 +123,20 @@ No external funding is claimed in this manuscript. Computational experiments rep
 
 [2] P. Henderson, R. Islam, P. Bachman, J. Pineau, D. Precup, D. Meger, Deep Reinforcement Learning That Matters, Proceedings of the AAAI Conference on Artificial Intelligence 32(1) (2018). https://doi.org/10.1609/aaai.v32i1.11694.
 
-[3] M. Zhu, F. McKenna, M.H. Scott, OpenSeesPy: Python library for the OpenSees finite element framework, SoftwareX 7 (2018) 6–11. https://doi.org/10.1016/j.softx.2017.10.009.
+[3] G.K. Sandve, A. Nekrutenko, J. Taylor, E. Hovig, Ten Simple Rules for Reproducible Computational Research, PLOS Computational Biology 9(10) (2013) e1003285. https://doi.org/10.1371/journal.pcbi.1003285.
 
-[4] J.K. Terry, B. Black, N. Grammel, M. Jayakumar, A. Hari, R. Sullivan, L.S. Santos, C. Dieffendahl, C. Horsch, R. Perez-Vicente, N. Williams, Y. Lokesh, P. Ravi, PettingZoo: Gym for Multi-Agent Reinforcement Learning, Advances in Neural Information Processing Systems 34 (2021).
+[4] G. Wilson, J. Bryan, K. Cranston, J. Kitzes, L. Nederbragt, T.K. Teal, Good enough practices in scientific computing, PLOS Computational Biology 13(6) (2017) e1005510. https://doi.org/10.1371/journal.pcbi.1005510.
 
-[5] K. Deb, A. Pratap, S. Agarwal, T. Meyarivan, A fast and elitist multiobjective genetic algorithm: NSGA-II, IEEE Transactions on Evolutionary Computation 6(2) (2002) 182–197. https://doi.org/10.1109/4235.996017.
+[5] R. Godwin, R.L. Melvin, Toward efficient data science: A comprehensive MLOps template for collaborative code development and automation, SoftwareX 26 (2024) 101723. https://doi.org/10.1016/j.softx.2024.101723.
 
-[6] J. Blank, K. Deb, pymoo: Multi-Objective Optimization in Python, IEEE Access 8 (2020) 89497–89509. https://doi.org/10.1109/ACCESS.2020.2990567.
+[6] G. Padovani, S. Fiore, yProv4DV: Filling the visualization gap in reproducible research workflows, SoftwareX 35 (2026) 102821. https://doi.org/10.1016/j.softx.2026.102821.
 
 [7] F. Kowsari, SeismicShield-RL: Preregistered Reproducible Infrastructure for Seismic Damper Co-Design Benchmarking, version 0.8.2, Zenodo (2026). https://doi.org/10.5281/zenodo.22067278.
+
+[8] K. Deb, A. Pratap, S. Agarwal, T. Meyarivan, A fast and elitist multiobjective genetic algorithm: NSGA-II, IEEE Transactions on Evolutionary Computation 6(2) (2002) 182–197. https://doi.org/10.1109/4235.996017.
+
+[9] J. Blank, K. Deb, pymoo: Multi-Objective Optimization in Python, IEEE Access 8 (2020) 89497–89509. https://doi.org/10.1109/ACCESS.2020.2990567.
+
+[10] J.K. Terry, B. Black, N. Grammel, M. Jayakumar, A. Hari, R. Sullivan, L.S. Santos, C. Dieffendahl, C. Horsch, R. Perez-Vicente, N. Williams, Y. Lokesh, P. Ravi, PettingZoo: Gym for Multi-Agent Reinforcement Learning, Advances in Neural Information Processing Systems 34 (2021) 15032–15043.
+
+[11] M. Zhu, F. McKenna, M.H. Scott, OpenSeesPy: Python library for the OpenSees finite element framework, SoftwareX 7 (2018) 6–11. https://doi.org/10.1016/j.softx.2017.10.009.
