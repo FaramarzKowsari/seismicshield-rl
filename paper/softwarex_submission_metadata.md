@@ -6,8 +6,8 @@
 **Title:** SeismicShield-RL: Preregistered and Reproducible Research Software for Auditable Seismic Friction-Damper Co-Design Benchmarking  
 **Author:** Faramarz Kowsari  
 **ORCID:** https://orcid.org/0000-0003-1692-0453  
-**Affiliation:** confirm before submission  
-**Corresponding-author email:** confirm before submission
+**Affiliation:** Independent Researcher  
+**Corresponding-author email:** faramarzkowsari@gmail.com
 
 ## Keywords
 
