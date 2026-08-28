@@ -1,0 +1,23 @@
+{
+  "all_converged": true,
+  "artifacts": {
+    "benchmark.csv": "69327816136fbf707171c5c11ee2609d8b54c920d53b0790c0c75a9eb10ffa44",
+    "benchmark.json": "d088a52d529ee6c6e364bda4d670f5e54b0d82322fcda8f20dffbd375c192b09",
+    "manifest.json": "94c4fd5d2babfd987b5b575950feb4d894aa1f4410efc50ef56ba9ecaf571b22"
+  },
+  "config": "configs/experiments/smoke.yaml",
+  "config_sha256": "b9aa12fbc90bac769be104e5dc022e39eb7726ef135493a1b085337884dffe12",
+  "confirmatory_data_used": false,
+  "example": "softwarex-public-synthetic-validation",
+  "methods": [
+    "no_damper",
+    "uniform_1x100k",
+    "drift_proportional",
+    "random_search_budget_24"
+  ],
+  "paper_level_efficacy_claim": false,
+  "seismicshield_rl_version": "0.8.3",
+  "status": "software-validation-only",
+  "synthetic_fixture": "data/fixtures/synthetic_pulse.csv",
+  "synthetic_fixture_sha256": "8017e381fb38d11cf17c0cfb403ae7909a6ff07df3a1f919e962709f04d2e956"
+}
