@@ -1,0 +1,58 @@
+[
+  {
+    "method": "no_damper",
+    "counts": "0 0 0",
+    "slip_force_n": "0.0 0.0 0.0",
+    "cost": 0.0,
+    "midr": 0.007966505500009413,
+    "pfa_g": 0.766650310590154,
+    "midr_ratio": 1.0,
+    "pfa_ratio": 1.0,
+    "objective": 0.8,
+    "reward": -0.8,
+    "converged": true,
+    "status": "software-validation-only"
+  },
+  {
+    "method": "uniform_1x100k",
+    "counts": "1 1 1",
+    "slip_force_n": "100000.0 100000.0 100000.0",
+    "cost": 0.1607142857142857,
+    "midr": 0.007361541693110872,
+    "pfa_g": 0.7645387514368933,
+    "midr_ratio": 0.9240615842293931,
+    "pfa_ratio": 0.9972457336492367,
+    "objective": 0.7970065768233169,
+    "reward": -0.7970065768233169,
+    "converged": true,
+    "status": "software-validation-only"
+  },
+  {
+    "method": "drift_proportional",
+    "counts": "1 1 1",
+    "slip_force_n": "100000.0 100000.0 100000.0",
+    "cost": 0.1607142857142857,
+    "midr": 0.007361541693110872,
+    "pfa_g": 0.7645387514368933,
+    "midr_ratio": 0.9240615842293931,
+    "pfa_ratio": 0.9972457336492367,
+    "objective": 0.7970065768233169,
+    "reward": -0.7970065768233169,
+    "converged": true,
+    "status": "software-validation-only"
+  },
+  {
+    "method": "random_search_budget_24",
+    "counts": "3 1 2",
+    "slip_force_n": "350000.0 100000.0 100000.0",
+    "cost": 0.4107142857142857,
+    "midr": 0.005091943771803218,
+    "pfa_g": 0.6348389414632197,
+    "midr_ratio": 0.639169052453074,
+    "pfa_ratio": 0.8280684592360392,
+    "objective": 0.6595928914793541,
+    "reward": -0.6595928914793541,
+    "converged": true,
+    "status": "software-validation-only"
+  }
+]
