@@ -1,0 +1,53 @@
+# SoftwareX Submission Metadata
+
+## Core fields
+
+**Article type:** Original Software Publication  
+**Title:** SeismicShield-RL: Preregistered and Reproducible Research Software for Auditable Seismic Friction-Damper Co-Design Benchmarking  
+**Author:** Faramarz Kowsari  
+**ORCID:** https://orcid.org/0000-0003-1692-0453  
+**Affiliation:** confirm before submission  
+**Corresponding-author email:** confirm before submission
+
+## Keywords
+
+1. Seismic engineering
+2. Reinforcement learning
+3. Friction dampers
+4. OpenSeesPy
+5. Reproducible research
+6. Multi-objective optimization
+
+## Proposed CRediT statement — verify before submission
+
+Faramarz Kowsari: Conceptualization; Methodology; Software; Validation; Data curation; Writing – original draft; Writing – review & editing; Visualization; Project administration.
+
+## Funding
+
+This research did not receive any specific grant from funding agencies in the public, commercial, or not-for-profit sectors.
+
+## Competing interests
+
+The author declares no competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+## Data and code availability
+
+Repository: https://github.com/FaramarzKowsari/seismicshield-rl  
+License: MIT  
+Frozen v0.8.2 scientific release DOI: https://doi.org/10.5281/zenodo.22067278  
+Software concept DOI: https://doi.org/10.5281/zenodo.22067277  
+OSF preregistration DOI: https://doi.org/10.17605/OSF.IO/64DTX  
+SoftwareX v0.8.3 version DOI: **insert after Zenodo mints the submission release**
+
+## Generative-AI declaration
+
+During the preparation of this work, the author used OpenAI ChatGPT (GPT-5.6 Sol) to assist with literature organization, manuscript structuring, language refinement, and preparation of publication-support code and documentation. The author reviewed and edited the resulting material, independently checked factual claims and references, and takes full responsibility for the content of the publication. AI-assisted publication-support utilities do not alter the immutable v0.8.2 scientific source or supply confirmatory research outcomes.
+
+## Suggested submission category / framing
+
+Primary framing: research software; reproducibility; computational engineering; simulation-based optimization.  
+Do not frame the paper as a completed algorithm-comparison or seismic-efficacy study.
+
+## Reviewer-selection rule
+
+Only suggest reviewers with relevant expertise in research software, computational structural engineering, reinforcement-learning reproducibility, or OpenSees/OpenSeesPy, and screen for recent co-authorship, institutional conflicts, personal collaborations, and other conflicts before entering names. No reviewer names are proposed here without that screening.
