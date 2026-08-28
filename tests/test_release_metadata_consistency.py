@@ -12,6 +12,7 @@ import seismicshield_rl
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_REPOSITORY = "https://github.com/FaramarzKowsari/seismicshield-rl"
 EXPECTED_LICENSE = "MIT"
+EXPECTED_SOFTWAREX_DOI = "10.5281/zenodo.22144346"
 EXPECTED_CONCEPT_DOI = "10.5281/zenodo.22067277"
 EXPECTED_FROZEN_DOI = "10.5281/zenodo.22067278"
 EXPECTED_OSF_DOI = "10.17605/OSF.IO/64DTX"
@@ -56,9 +57,13 @@ def test_active_identity_metadata_is_consistent():
     assert citation["repository-code"] == EXPECTED_REPOSITORY
     assert urls["Repository"] == EXPECTED_REPOSITORY
 
+    assert citation["doi"] == EXPECTED_SOFTWAREX_DOI
+    assert citation["url"] == f"https://doi.org/{EXPECTED_SOFTWAREX_DOI}"
+    assert EXPECTED_SOFTWAREX_DOI in citation["message"]
     assert EXPECTED_CONCEPT_DOI in citation["message"]
     assert EXPECTED_FROZEN_DOI in citation["message"]
     assert EXPECTED_OSF_DOI in citation["message"]
+    assert EXPECTED_SOFTWAREX_DOI in urls["SoftwareX v0.8.3 archive"]
     assert EXPECTED_FROZEN_DOI in urls["Archived scientific release"]
     assert EXPECTED_CONCEPT_DOI in urls["Software concept DOI"]
     assert EXPECTED_OSF_DOI in urls["OSF preregistration"]
