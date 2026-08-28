@@ -4,8 +4,8 @@
 **Target journal:** SoftwareX  
 **Author:** Faramarz Kowsari  
 **ORCID:** https://orcid.org/0000-0003-1692-0453  
-**Affiliation:** [confirm before submission]  
-**Corresponding-author email:** [confirm before submission]
+**Affiliation:** Independent Researcher  
+**Corresponding-author email:** faramarzkowsari@gmail.com
 
 ## Abstract
 
@@ -18,14 +18,14 @@ SeismicShield-RL is open-source research software for auditable benchmarking of 
 | Nr. | Code metadata description | Metadata |
 |---|---|---|
 | C1 | Current code version | v0.8.3 |
-| C2 | Permanent link to code/repository used for this code version | https://github.com/FaramarzKowsari/seismicshield-rl/tree/267e4abcb376faf07d0ca8b2cda827de30a43bdf |
-| C3 | Permanent link to Reproducible Capsule | Exact v0.8.3 SoftwareX archive DOI to be inserted after release; frozen v0.8.2 scientific archive: https://doi.org/10.5281/zenodo.22067278; software concept DOI: https://doi.org/10.5281/zenodo.22067277 |
+| C2 | Permanent link to code/repository used for this code version | https://github.com/FaramarzKowsari/seismicshield-rl/tree/1da50d411a2744c51307a0196edf656c20c1bde8 |
+| C3 | Permanent link to Reproducible Capsule | https://doi.org/10.5281/zenodo.22144346; frozen v0.8.2 scientific archive: https://doi.org/10.5281/zenodo.22067278; software concept DOI: https://doi.org/10.5281/zenodo.22067277 |
 | C4 | Legal Code License | MIT License |
 | C5 | Code versioning system used | Git |
 | C6 | Software code languages, tools, and services used | Python; NumPy; PyYAML; OpenSeesPy; Gymnasium; PettingZoo; TorchRL/PyTorch; pymoo; FastAPI; pytest; GitHub Actions |
 | C7 | Compilation requirements, operating environments & dependencies | Python >=3.11; optional OpenSeesPy backend pinned to 3.8.0.0 for Python >=3.12; dependency groups declared in `pyproject.toml`; CI covers Python 3.11 and 3.12 on Ubuntu |
 | C8 | If available, link to developer documentation/manual | https://faramarzkowsari.github.io/seismicshield-rl/researcher-guide.html |
-| C9 | Support email for questions | [confirm corresponding-author email before submission] |
+| C9 | Support email for questions | faramarzkowsari@gmail.com; GitHub Issues: https://github.com/FaramarzKowsari/seismicshield-rl/issues |
 
 ## 1. Motivation and significance
 
@@ -123,7 +123,7 @@ Faramarz Kowsari: Conceptualization; Methodology; Software; Validation; Data cur
 
 ## Data and code availability
 
-The source code is publicly available at https://github.com/FaramarzKowsari/seismicshield-rl under the MIT License. The frozen v0.8.2 scientific release is archived at Zenodo, DOI https://doi.org/10.5281/zenodo.22067278, with software concept DOI https://doi.org/10.5281/zenodo.22067277. The preregistered protocol is identified separately by OSF DOI https://doi.org/10.17605/OSF.IO/64DTX. Restricted earthquake waveform bytes are not redistributed; provenance metadata and processed-waveform hashes are preserved instead. The exact v0.8.3 SoftwareX archive DOI will be inserted after the submission release is minted.
+The source code is publicly available at https://github.com/FaramarzKowsari/seismicshield-rl under the MIT License. The exact v0.8.3 SoftwareX submission release is archived at Zenodo, DOI https://doi.org/10.5281/zenodo.22144346, and corresponds to Git commit `1da50d411a2744c51307a0196edf656c20c1bde8`. The frozen v0.8.2 scientific infrastructure is separately archived at https://doi.org/10.5281/zenodo.22067278, while the software concept DOI is https://doi.org/10.5281/zenodo.22067277. The preregistered protocol is identified separately by OSF DOI https://doi.org/10.17605/OSF.IO/64DTX. Restricted earthquake waveform bytes are not redistributed; provenance metadata and processed-waveform hashes are preserved instead.
 
 ## Declaration of competing interest
 
