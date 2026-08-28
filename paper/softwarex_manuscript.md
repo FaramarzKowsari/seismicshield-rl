@@ -41,7 +41,11 @@ The software contribution is therefore not a new reinforcement-learning algorith
 
 ### 2.1 Architecture and frozen benchmark contracts
 
-SeismicShield-RL is organized around a common evaluation path for heuristic optimization, evolutionary optimization, single-agent reinforcement learning, and multi-agent reinforcement learning. Figure 1 summarizes the intended architecture: data and provenance enter frozen experimental contracts; contracts feed a deterministic execution planner; optimization methods interact with common simulation and objective interfaces; simulation outputs are recorded through an evidence and provenance layer.
+SeismicShield-RL is organized around a common evaluation path for heuristic optimization, evolutionary optimization, single-agent reinforcement learning, and multi-agent reinforcement learning. Figure 1 summarizes the architecture: data and provenance enter frozen experimental contracts; contracts feed a deterministic execution planner; optimization methods interact with common simulation and objective interfaces; Stage-A selection is frozen before confirmatory access; and simulation outputs are admitted to an evidence ledger according to their scientific status.
+
+![Figure 1 — SeismicShield-RL research-software architecture and evidence boundary](figures/Figure_1_SeismicShield_RL_Architecture.svg)
+
+**Figure 1. SeismicShield-RL research-software architecture and evidence boundary.** Frozen data, source, objective, algorithm, seed, budget, and selection contracts feed deterministic execution and common Tier-1/Tier-2 simulation interfaces. Stage-A selection is separated from confirmatory Tier-2 evaluation by a fail-closed gate. The evidence ledger distinguishes verified infrastructure claims from efficacy claims that remain blocked. The vector schematic was prepared with assistance from OpenAI ChatGPT (GPT-5.6 Sol) and verified by the author; no research data were generated or altered in preparing the figure.
 
 The frozen v0.8.2 scientific infrastructure identifies 136 processed earthquake records from 34 events. The records are partitioned at the event level into 52 training, 20 validation, 16 pilot, and 48 confirmatory records. Restricted waveform bytes are not redistributed. Instead, the repository preserves source provenance and processed-waveform SHA-256 values so authorized users can re-establish record identity without the project republishing restricted source data.
 
@@ -107,7 +111,15 @@ The runtime preflight verified the integrity and execution pathways needed for t
 
 ## Acknowledgements
 
-No external funding is claimed for the work described in this manuscript.
+No external funding or institutional sponsorship is claimed for the work reported in this manuscript.
+
+## Funding
+
+This research did not receive any specific grant from funding agencies in the public, commercial, or not-for-profit sectors.
+
+## CRediT authorship contribution statement
+
+Faramarz Kowsari: Conceptualization; Methodology; Software; Validation; Data curation; Writing – original draft; Writing – review & editing; Visualization; Project administration.
 
 ## Data and code availability
 
@@ -116,6 +128,10 @@ The source code is publicly available at https://github.com/FaramarzKowsari/seis
 ## Declaration of competing interest
 
 The author declares no competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+## Declaration of generative AI and AI-assisted technologies in the manuscript preparation process
+
+During the preparation of this work, the author used OpenAI ChatGPT (GPT-5.6 Sol) to assist with literature organization, manuscript structuring, language refinement, publication-support code and documentation, and preparation of the explanatory architecture schematic in Figure 1. The author reviewed and edited the resulting material, independently checked factual claims and references, verified the figure against the repository's frozen architecture contracts, and takes full responsibility for the content of the publication. AI assistance did not generate or alter research data, modify the immutable v0.8.2 scientific source, or supply confirmatory research outcomes.
 
 ## References
 
