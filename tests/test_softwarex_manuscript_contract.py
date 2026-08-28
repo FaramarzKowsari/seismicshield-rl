@@ -46,9 +46,15 @@ def test_softwarex_main_body_stays_below_word_limit():
 def test_softwarex_code_metadata_matches_publication_package():
     text = MANUSCRIPT.read_text(encoding="utf-8")
     assert "| C1 | Current code version | v0.8.3 |" in text
+    assert "10.5281/zenodo.22144346" in text
     assert "10.5281/zenodo.22067278" in text
     assert "10.5281/zenodo.22067277" in text
     assert "10.17605/OSF.IO/64DTX" in text
+    assert "1da50d411a2744c51307a0196edf656c20c1bde8" in text
+    assert "Independent Researcher" in text
+    assert "faramarzkowsari@gmail.com" in text
+    assert "[confirm before submission]" not in text
+    assert "to be inserted after" not in text
     assert "MIT License" in text
 
 
