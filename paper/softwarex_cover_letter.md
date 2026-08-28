@@ -13,7 +13,9 @@ The frozen scientific infrastructure defines 136 processed earthquake records, 1
 
 Accordingly, the manuscript does not claim that MAPPO, PPO, IPPO, NSGA-II, scalar genetic optimization, or random search is superior. Its contribution is the reusable research-software architecture itself: a system for separating exploration, selection, and confirmation while preserving traceable evidence lineage in expensive simulation-based machine-learning research.
 
-The project is publicly available under the MIT License, with Git version control, public documentation, automated tests, an OSF preregistration, and a preserved Zenodo archive of the frozen v0.8.2 scientific infrastructure. A v0.8.3 SoftwareX submission release will archive the publication-support packaging without changing the immutable v0.8.2 scientific source; the exact release DOI will be inserted into the manuscript before submission.
+The public illustrative example accompanying the manuscript was re-executed in a clean GitHub Actions environment using CPython 3.12.14. All example methods converged; the run used only the synthetic fixture, explicitly recorded `confirmatory_data_used=false` and `paper_level_efficacy_claim=false`, and its output hashes are frozen in the repository for auditability.
+
+The project is publicly available under the MIT License, with Git version control, public documentation, automated tests, an OSF preregistration, and permanent Zenodo archives. The exact SoftwareX submission release, v0.8.3, is archived at DOI 10.5281/zenodo.22144346. The immutable v0.8.2 scientific infrastructure remains separately archived at DOI 10.5281/zenodo.22067278, and the preregistered protocol is identified by DOI 10.17605/OSF.IO/64DTX. Publication-support changes in v0.8.3 do not modify the frozen v0.8.2 scientific computation.
 
 We believe this work fits SoftwareX because the primary contribution is reusable, inspectable research software intended to improve reproducibility, auditability, and scientific reuse across computational engineering and related simulation-based optimization studies.
 
@@ -22,4 +24,6 @@ The manuscript is not under consideration elsewhere. The author takes responsibi
 Sincerely,
 
 **Faramarz Kowsari**  
-ORCID: https://orcid.org/0000-0003-1692-0453
+Independent Researcher  
+ORCID: https://orcid.org/0000-0003-1692-0453  
+Email: faramarzkowsari@gmail.com
