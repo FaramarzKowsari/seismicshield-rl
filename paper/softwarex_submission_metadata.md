@@ -33,11 +33,12 @@ The author declares no competing financial interests or personal relationships t
 ## Data and code availability
 
 Repository: https://github.com/FaramarzKowsari/seismicshield-rl  
+Exact SoftwareX v0.8.3 release commit: https://github.com/FaramarzKowsari/seismicshield-rl/tree/1da50d411a2744c51307a0196edf656c20c1bde8  
 License: MIT  
+SoftwareX v0.8.3 version DOI: https://doi.org/10.5281/zenodo.22144346  
 Frozen v0.8.2 scientific release DOI: https://doi.org/10.5281/zenodo.22067278  
 Software concept DOI: https://doi.org/10.5281/zenodo.22067277  
-OSF preregistration DOI: https://doi.org/10.17605/OSF.IO/64DTX  
-SoftwareX v0.8.3 version DOI: **insert after Zenodo mints the submission release**
+OSF preregistration DOI: https://doi.org/10.17605/OSF.IO/64DTX
 
 ## Figure 1
 
