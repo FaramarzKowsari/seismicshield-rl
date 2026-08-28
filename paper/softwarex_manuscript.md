@@ -37,7 +37,7 @@ SeismicShield-RL addresses that boundary as a software problem. Its central desi
 
 The software contribution is therefore not a new reinforcement-learning algorithm or a new finite-element solver. It is a reusable experimental-governance layer for simulation-based optimization. The current release deliberately separates two software identities. Version 0.8.3 is the publication and usability package. The scientific experiment remains frozen at v0.8.2, tag `confirmatory-v0.8.2-final`, commit `cecd3b6c27b5deb6cb6be7ddc478cfc407a45644`, with its exact archive preserved on Zenodo [7]. This separation permits documentation, examples, and submission support to improve without redefining the registered scientific computation.
 
-## 2. Software functionalities
+## 2. Software description
 
 ### 2.1 Architecture and frozen benchmark contracts
 
@@ -49,15 +49,17 @@ Structural uncertainty is represented by 16 states across 3-, 6-, 10-, and 20-st
 
 The registered algorithm ladder contains random search, scalar genetic optimization, NSGA-II, PPO, IPPO, and MAPPO. NSGA-II supplies an established multi-objective evolutionary baseline [8], while the software can use the pymoo framework for multi-objective optimization [9]. Single-agent and multi-agent interfaces share the same evaluator and budget accounting. PettingZoo-compatible multi-agent abstractions support story-decomposed MARL without permitting an agent implementation to bypass the frozen objective or data contracts [10].
 
-### 2.2 Multi-fidelity simulation and research boundaries
+### 2.2 Software functionalities and multi-fidelity research boundaries
 
 The project provides two simulation paths. Tier-1 is a fast research surrogate intended for software development, algorithm engineering, and large-scale preliminary evaluation. Tier-2 uses OpenSeesPy, the Python interface to the OpenSees finite-element framework [11], as a higher-fidelity verification backend. The fidelity distinction is explicit in the evidence model: a Tier-1 result is not automatically treated as engineering validation, and a pilot Tier-2 convergence check is not treated as confirmatory evidence.
 
-Above the numerical layer, the repository contains seed ledgers, frozen manifests, source-authentication checks, confirmatory gates, selection-only workspaces, continuous-integration workflows, and an evidence ledger. The evidence ledger records claim status rather than merely storing output files. A claim may be verified as infrastructure evidence, exploratory, or blocked. This allows the repository to encode a scientifically important state that ordinary result folders often obscure: a calculation may be technically successful while still being ineligible to support a paper-level efficacy claim.
+Above the numerical layer, the repository provides six practical research functions: versioned benchmark identity; shared evaluation rules across optimization families; frozen train/validation/pilot/confirmatory information boundaries; deterministic execution planning; provenance and source-authentication checks; and claim-status tracking through an evidence ledger. The evidence ledger records whether a claim is verified as infrastructure evidence, exploratory, or blocked. A calculation may therefore be technically successful while still being ineligible to support a paper-level efficacy claim.
+
+Seed ledgers, frozen manifests, confirmatory gates, selection-only workspaces, continuous-integration workflows, and cryptographic hashes implement these functions. Confirmatory runs are fail-closed: an unexpected source state, manifest, seed ledger, or analysis contract blocks execution rather than silently falling back to the current working tree.
 
 Execution is expanded before full computation into deterministic atomic shards. The frozen plan contains 475 shards and 2,820,160 structural-response calls: 424 Stage-A Tier-1 shards comprising 2,780,992 calls, followed by 51 Tier-2 confirmatory shards comprising 39,168 calls. Learned Stage-A shards couple training and validation selection under the frozen implementation. Arbitrarily splitting such a shard to fit an external CI time limit would change the registered computational semantics, so infrastructure interruption is handled differently from a scientific solver failure.
 
-### 2.3 Sample code and public validation example
+### 2.3 Sample code snippets analysis
 
 Version 0.8.3 adds a small public example designed specifically for software validation. It uses a synthetic fixture and never reads the frozen confirmatory earthquake partition. After installation, the example can be run with:
 
@@ -73,17 +75,19 @@ confirmatory_data_used = false
 paper_level_efficacy_claim = false
 ```
 
-These fields are also protected by automated tests. The example is therefore useful for checking installation, configuration, artifact generation, hashing, and evidence labeling, but it cannot be mistaken for a reduced confirmatory experiment.
+These fields are also protected by automated tests. The snippet therefore demonstrates installation, configuration, artifact generation, hashing, and evidence labeling without acting as a reduced confirmatory experiment.
 
-### 2.4 Illustrative example: auditable runtime preflight
+## 3. Illustrative examples
 
-The preserved v0.8.2 runtime preflight provides a larger illustrative example. It authenticated the frozen scientific source, checked the earthquake manifest, independently reproduced SHA-256 values for all 136 processed records, reproduced the frozen partition counts, and exercised four Tier-1 and four Tier-2 pilot fixtures. All eight pilot fixture calls converged in the tested environment.
+### 3.1 Auditable runtime preflight without confirmatory leakage
+
+The preserved v0.8.2 runtime preflight illustrates the full audit path. It authenticated the frozen scientific source, checked the earthquake manifest, independently reproduced SHA-256 values for all 136 processed records, reproduced the frozen partition counts, and exercised four Tier-1 and four Tier-2 pilot fixtures. All eight pilot fixture calls converged in the tested environment.
 
 Measured mean wall-clock times were approximately 1.329 s per Tier-1 call and 1.989 s per Tier-2 call in the recorded Linux/Python 3.12 environment. Applying those measured rates to the deterministic call ledger projected approximately 1,026.68 sequential simulation hours for Stage A and 21.64 sequential hours for the Tier-2 campaign. These values are workload projections for the tested environment, not hardware-independent performance guarantees.
 
-The preflight did not execute confirmatory structural-response simulations, emit confirmatory response metrics, or inspect confirmatory outcomes. That distinction changed the project decision. The measured workload exceeded the intended no-cost execution envelope, while splitting atomic learned shards merely to satisfy hosted-CI limits would have altered the registered semantics. Rather than shrink the protocol after preregistration, the full Stage-A and Tier-2 campaigns were deferred. The software thus demonstrated a second function beyond running experiments: it made the cost of the registered experiment visible early enough to stop without contaminating the confirmatory boundary.
+The preflight did not execute confirmatory structural-response simulations, emit confirmatory response metrics, or inspect confirmatory outcomes. That distinction changed the project decision. The measured workload exceeded the intended no-cost execution envelope, while splitting atomic learned shards merely to satisfy hosted-CI limits would have altered the registered semantics. Rather than shrink the protocol after preregistration, the full Stage-A and Tier-2 campaigns were deferred. The software thus demonstrated a function beyond numerical execution: it made the cost of the registered experiment visible early enough to stop without contaminating the confirmatory boundary.
 
-## 3. Impact
+## 4. Impact
 
 SeismicShield-RL enables research questions that are difficult to pose cleanly with ad hoc experiment scripts. A future user can ask whether MAPPO, PPO, IPPO, NSGA-II, scalar GA, or random search differs in held-out Pareto performance under identical earthquake partitions, structural uncertainty, budgets, seeds, selection rules, and objective definitions. Because those conditions are explicit software objects, a later comparison can distinguish an algorithmic difference from a hidden change in experimental protocol.
 
@@ -95,7 +99,7 @@ Current impact should nevertheless be stated conservatively. The repository is a
 
 This limitation is part of the software's intended value. In the evidence ledger, infrastructure facts—such as successful pilot convergence and verified processed-record hashes—can be marked verified while efficacy statements remain blocked. The system therefore reduces the risk that readiness evidence is rhetorically upgraded into performance evidence simply because a manuscript needs a result.
 
-## 4. Conclusions
+## 5. Conclusions
 
 SeismicShield-RL turns normally informal choices in simulation-based machine-learning research into explicit software contracts. Data partitions, seeds, algorithm budgets, source identity, checkpoint-selection behavior, simulation fidelity, execution units, and evidence status can all be inspected before expensive computation begins. The frozen v0.8.2 infrastructure establishes the scientific boundary, while v0.8.3 provides publication-oriented metadata, documentation, tests, and a synthetic validation example without changing that frozen experiment.
 
@@ -133,6 +137,6 @@ The author declares no competing financial interests or personal relationships t
 
 [9] J. Blank, K. Deb, pymoo: Multi-Objective Optimization in Python, IEEE Access 8 (2020) 89497–89509. https://doi.org/10.1109/ACCESS.2020.2990567.
 
-[10] J.K. Terry, B. Black, N. Grammel, M. Jayakumar, A. Hari, R. Sullivan, L.S. Santos, C. Dieffendahl, C. Horsch, R. Perez-Vicente, N. Williams, Y. Lokesh, P. Ravi, PettingZoo: Gym for Multi-Agent Reinforcement Learning, Advances in Neural Information Processing Systems 34 (2021).
+[10] J.K. Terry, B. Black, N. Grammel, M. Jayakumar, A. Hari, R. Sullivan, L.S. Santos, C. Dieffendahl, C. Horsch, R. Perez-Vicente, N. Williams, Y. Lokesh, P. Ravi, PettingZoo: Gym for Multi-Agent Reinforcement Learning, Advances in Neural Information Processing Systems 34 (2021) 15032–15043.
 
 [11] M. Zhu, F. McKenna, M.H. Scott, OpenSeesPy: Python library for the OpenSees finite element framework, SoftwareX 7 (2018) 6–11. https://doi.org/10.1016/j.softx.2017.10.009.
