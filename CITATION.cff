@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use this research software, cite the software using the Zenodo concept DOI 10.5281/zenodo.22067277 or the exact version DOI for the release you used. The frozen v0.8.2 scientific infrastructure is archived at 10.5281/zenodo.22067278. Version 0.8.3 adds SoftwareX submission packaging and publication-support utilities without changing the immutable v0.8.2 scientific source or generating confirmatory efficacy results. The OSF DOI 10.17605/OSF.IO/64DTX identifies the preregistered protocol, not a software release."
+message: "If you use this research software, cite the exact v0.8.3 SoftwareX submission release DOI 10.5281/zenodo.22144346 for this release, or the Zenodo concept DOI 10.5281/zenodo.22067277 for the evolving software project. The frozen v0.8.2 scientific infrastructure is archived at 10.5281/zenodo.22067278. Version 0.8.3 adds SoftwareX submission packaging and publication-support utilities without changing the immutable v0.8.2 scientific source or generating confirmatory efficacy results. The OSF DOI 10.17605/OSF.IO/64DTX identifies the preregistered protocol, not a software release."
 title: "SeismicShield-RL: Preregistered Reproducible Infrastructure for Seismic Damper Co-Design Benchmarking"
 type: software
 authors:
@@ -8,9 +8,9 @@ authors:
     orcid: "https://orcid.org/0000-0003-1692-0453"
 version: 0.8.3
 date-released: 2026-08-28
-doi: "10.5281/zenodo.22067277"
+doi: "10.5281/zenodo.22144346"
 repository-code: "https://github.com/FaramarzKowsari/seismicshield-rl"
-url: "https://doi.org/10.5281/zenodo.22067277"
+url: "https://doi.org/10.5281/zenodo.22144346"
 license: MIT
 abstract: "SoftwareX submission packaging for a preregistered reproducible benchmark platform. The immutable v0.8.2 scientific infrastructure remains the scientific source; full Stage-A and confirmatory Tier-2 campaigns remain deferred, and no algorithm-efficacy result is claimed."
 keywords:
